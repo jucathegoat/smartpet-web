@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $settings = @{}
 Get-Content (Join-Path $projectRoot '.env') | ForEach-Object {
@@ -12,7 +12,14 @@ foreach ($key in @('db_host', 'db_port', 'db_user', 'db_pass', 'db_schema', 'adm
     if (!$settings.ContainsKey($key) -or !$settings[$key]) { throw "Falta configurar '$key' no arquivo .env." }
 }
 if (!(Test-Path (Join-Path $tomcat 'bin\startup.bat'))) { throw "Tomcat não encontrado em $tomcat." }
-if (!(Test-Path (Join-Path $projectRoot 'backend\build-war\smartpet.war'))) { throw 'Gere o WAR com backend\mvnw.cmd package antes de iniciar.' }
+$war = Join-Path $projectRoot 'build-war\smartpet.war'
+if (!(Test-Path $war)) {
+    Write-Host 'Gerando arquivo smartpet.war via Maven...' -ForegroundColor Cyan
+    & (Join-Path $projectRoot 'mvnw.cmd') package -DskipTests
+    if (!(Test-Path $war)) {
+        throw "Falha ao gerar o arquivo smartpet.war. Verifique os logs do Maven."
+    }
+}
 
 $env:JAVA_HOME = $javaHome
 $env:CATALINA_HOME = $tomcat
@@ -24,7 +31,6 @@ $env:SMARTPET_DB_USER = $settings['db_user']
 $env:SMARTPET_DB_PASSWORD = $settings['db_pass']
 
 $webapps = Join-Path $tomcat 'webapps'
-$war = Join-Path $projectRoot 'backend\build-war\smartpet.war'
 & (Join-Path $tomcat 'bin\shutdown.bat') | Out-Null
 for ($i = 0; $i -lt 20; $i++) {
     Start-Sleep -Seconds 1
