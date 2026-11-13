@@ -15,7 +15,8 @@
                 <div class="logo">🐾 SmartPet Admin</div>
                 <nav><a class="active" href="${pageContext.request.contextPath}/fila">Fila</a><a
                         href="${pageContext.request.contextPath}/loja">Loja</a><a
-                        href="${pageContext.request.contextPath}/pets">Cadastro de pets</a><a
+                        href="${pageContext.request.contextPath}/pets">Pets</a><a
+                        href="${pageContext.request.contextPath}/clientes">Clientes</a><a
                         href="${pageContext.request.contextPath}/avaliacoes">Avaliações</a><a
                         href="${pageContext.request.contextPath}/logout">Sair</a></nav>
             </header>

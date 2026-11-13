@@ -1,17 +1,17 @@
-Ôªø$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $settings = @{}
 Get-Content (Join-Path $projectRoot '.env') | ForEach-Object {
     if ($_ -match '^\s*([^#=\s]+)\s*=(.*)$') { $settings[$matches[1].Trim()] = $matches[2].Trim() }
 }
 
-$tomcat = 'C:\src\apache-tomcat-11.0.27'
-$javaHome = 'C:\Users\joaol\AppData\Local\Programs\Eclipse Adoptium\jdk-25.0.5.8-hotspot'
+$tomcat = 'C:\src\apache-tomcat-10.1.61'
+$javaHome = 'C:\Program Files\Eclipse Adoptium\jdk-25.0.5.8-hotspot'
 $baseUrl = 'http://localhost:8080/smartpet/'
 foreach ($key in @('db_host', 'db_port', 'db_user', 'db_pass', 'db_schema', 'admin_user', 'admin_password')) {
     if (!$settings.ContainsKey($key) -or !$settings[$key]) { throw "Falta configurar '$key' no arquivo .env." }
 }
-if (!(Test-Path (Join-Path $tomcat 'bin\startup.bat'))) { throw "Tomcat n√£o encontrado em $tomcat." }
+if (!(Test-Path (Join-Path $tomcat 'bin\startup.bat'))) { throw "Tomcat n„o encontrado em $tomcat." }
 $war = Join-Path $projectRoot 'build-war\smartpet.war'
 if (!(Test-Path $war)) {
     Write-Host 'Gerando arquivo smartpet.war via Maven...' -ForegroundColor Cyan
@@ -67,6 +67,6 @@ if ($ready) {
     Write-Host "Login: $($settings['admin_user'])"
     Write-Host "Senha: $($settings['admin_password'])"
 } else {
-    Write-Host 'Tomcat iniciou, mas a conex√£o MySQL falhou. Confira as configura√ß√µes db_* no .env.' -ForegroundColor Yellow
+    Write-Host 'Tomcat iniciou, mas a conex„o MySQL falhou. Confira as configuraÁıes db_* no .env.' -ForegroundColor Yellow
 }
 Read-Host 'Pressione Enter para fechar esta janela'
