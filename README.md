@@ -23,7 +23,7 @@ Os dois rodam no **mesmo Tomcat, na mesma porta**. Não são duas aplicações �
 6. [Como executar (Linux/macOS)](#-como-executar-linuxmacos)
 7. [Credenciais de acesso](#-credenciais-de-acesso)
 8. [Endpoints da API](#-endpoints-da-api-para-o-mobile)
-9. [Deploy gratuito no Render](#-deploy-gratuito-no-render)
+9. [Deploy gratuito no Render](#-deploy-gratuito-no-render) // ignore
 10. [Como atualizar o código em produção](#-como-atualizar-o-código-em-produção)
 11. [Solução de problemas](#-solução-de-problemas)
 12. [Estrutura do projeto](#-estrutura-do-projeto)
