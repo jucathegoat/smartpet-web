@@ -42,3 +42,8 @@ flutter.env
 
 # Arquivos locais
 .vs/
+# Artefatos de build (nao versionar)
+build-war/
+*.war
+*.class
+*.bak

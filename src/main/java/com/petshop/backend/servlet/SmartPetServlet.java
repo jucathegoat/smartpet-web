@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -70,10 +71,20 @@ public class SmartPetServlet extends HttpServlet {
         String path = req.getPathInfo(); if (path == null || path.isEmpty()) path = req.getServletPath(); if (path == null || path.isEmpty()) path = "/";
         try {
             if ("/usuario".equals(path)) {
-                Map<String,Object> b=body(req);String cpf=value(b,"cpf"),nome=value(b,"nome"),usuario=value(b,"usuario"),senha=value(b,"senha");
+                Map<String,Object> b=body(req);String cpf=value(b,"cpf"),nome=value(b,"nome"),usuario=value(b,"usuario"),senha=String.valueOf(b.getOrDefault("senha",""));
                 if(cpf.isBlank()||nome.isBlank()||usuario.isBlank()||senha.isBlank()){json(resp,400,Map.of("sucesso",false,"mensagem","CPF, nome, usuário e senha são obrigatórios."));return;}
+                if(!Validacao.cpfValido(cpf)){json(resp,400,Map.of("sucesso",false,"mensagem","CPF inválido: informe os 11 dígitos."));return;}
+                if(!Validacao.usuarioValido(usuario)){json(resp,400,Map.of("sucesso",false,"mensagem","O usuário deve ter de 3 a 50 caracteres e não pode conter espaços."));return;}
+                if(!Validacao.senhaValida(senha)){json(resp,400,Map.of("sucesso",false,"mensagem","A senha deve ter de 4 a 50 caracteres."));return;}
+                String email=value(b,"email");
+                if(!email.isBlank()&&!Validacao.emailValido(email)){json(resp,400,Map.of("sucesso",false,"mensagem","E-mail inválido."));return;}
+                cpf=Validacao.somenteDigitos(cpf);
+                if(!query("SELECT cpf FROM tutor WHERE usuario=? LIMIT 1",usuario).isEmpty()){json(resp,409,Map.of("sucesso",false,"mensagem","Este usuário já está em uso. Escolha outro."));return;}
                 try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("INSERT INTO tutor(cpf,nome,usuario,senha,telefone,email,endereco,status_conta) VALUES(?,?,?,?,?,?,?,'Ativo')")){
-                    ps.setString(1,cpf);ps.setString(2,nome);ps.setString(3,usuario);ps.setString(4,senha);ps.setString(5,value(b,"telefone"));ps.setString(6,value(b,"email"));ps.setString(7,value(b,"endereco"));ps.executeUpdate();
+                    ps.setString(1,cpf);ps.setString(2,Validacao.truncar(nome,100));ps.setString(3,usuario);ps.setString(4,senha);ps.setString(5,Validacao.truncar(value(b,"telefone"),20));ps.setString(6,email);ps.setString(7,Validacao.truncar(value(b,"endereco"),150));ps.executeUpdate();
+                } catch (SQLException e) {
+                    if (e.getErrorCode() == 1062) { json(resp,409,Map.of("sucesso",false,"mensagem","Já existe um cadastro com este CPF.")); return; }
+                    throw e;
                 }
                 json(resp,201,Map.of("sucesso",true,"mensagem","Cliente cadastrado."));return;
             }
@@ -140,19 +151,32 @@ public class SmartPetServlet extends HttpServlet {
             if (path.equals("/admin/fila/salvar")) {if(!admin(req,resp))return;try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("INSERT INTO fila_atendimento(criticidade,data_hora_entrada,status,id_servicoFK,id_petFK) VALUES(?,CURRENT_TIMESTAMP,'Em espera',?,?)")){ps.setString(1,req.getParameter("servicoNome"));ps.setInt(2,Integer.parseInt(req.getParameter("servico")));ps.setInt(3,Integer.parseInt(req.getParameter("pet")));ps.executeUpdate();}resp.sendRedirect(req.getContextPath()+"/fila");return;}
             if (path.equals("/admin/fila/excluir")) {if(!admin(req,resp))return;try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("DELETE FROM fila_atendimento WHERE id_atendimento=?")){ps.setInt(1,Integer.parseInt(req.getParameter("id")));ps.executeUpdate();}resp.sendRedirect(req.getContextPath()+"/fila");return;}
             if ("/login/usuario".equals(path) || "/api/login".equals(path)) {
-                Map<String,Object> b=body(req); List<Map<String,Object>> found=query("SELECT cpf,nome,usuario,senha FROM tutor WHERE usuario=?", b.get("usuario"));
-                if (!found.isEmpty() && String.valueOf(found.get(0).get("senha")).equals(String.valueOf(b.get("senha")))) { Map<String,Object> u=found.get(0); u.remove("senha"); json(resp,200,Map.of("sucesso",true,"cpf",u.get("cpf"),"nome",u.get("nome"),"usuario",u.get("usuario"))); }
+                Map<String,Object> b=body(req);
+                String usuario=value(b,"usuario"), senha=String.valueOf(b.getOrDefault("senha",""));
+                if(usuario.isBlank()||senha.isBlank()){json(resp,400,Map.of("sucesso",false,"mensagem","Informe usuário e senha."));return;}
+                List<Map<String,Object>> found=query("SELECT cpf,nome,usuario,senha FROM tutor WHERE usuario=? LIMIT 1",usuario);
+                if (!found.isEmpty() && String.valueOf(found.get(0).get("senha")).equals(senha)) {
+                    Map<String,Object> u=found.get(0);
+                    List<Map<String,Object>> conta=query("SELECT status_conta FROM tutor WHERE cpf=? LIMIT 1",u.get("cpf"));
+                    String status=conta.isEmpty()?null:String.valueOf(conta.get(0).get("status_conta"));
+                    if (status!=null && !status.isBlank() && !"Ativo".equalsIgnoreCase(status)) {
+                        json(resp,403,Map.of("sucesso",false,"mensagem","Esta conta está inativa. Procure o pet shop.")); return;
+                    }
+                    u.remove("senha");
+                    json(resp,200,Map.of("sucesso",true,"cpf",u.get("cpf"),"nome",u.get("nome"),"usuario",u.get("usuario")));
+                }
                 else json(resp,401,Map.of("sucesso",false,"mensagem","Usuário ou senha incorretos.")); return;
             }
             if ("/api/fila/adicionar".equals(path)) {
                 Map<String,Object> b=body(req);
-                String cpf=value(b,"cpf"), nomePet=value(b,"pet"), nomeServico=value(b,"servico");
+                String cpf=Validacao.somenteDigitos(value(b,"cpf")), nomePet=value(b,"pet"), nomeServico=value(b,"servico");
                 if(cpf.isBlank() || nomePet.isBlank() || nomeServico.isBlank()) {
                     json(resp,400,Map.of("sucesso",false,"mensagem","Informe CPF, pet e serviço.")); return;
                 }
                 List<Map<String,Object>> pets=query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? AND p.nome=? LIMIT 1",cpf,nomePet);
                 List<Map<String,Object>> servicos=query("SELECT codigo_servico FROM servico WHERE nome=? LIMIT 1",nomeServico);
-                if(pets.isEmpty() || servicos.isEmpty()) { json(resp,404,Map.of("sucesso",false,"mensagem","Pet ou serviço não encontrado no cadastro.")); return; }
+                if(pets.isEmpty()) { json(resp,404,Map.of("sucesso",false,"mensagem","Pet \""+nomePet+"\" não encontrado no cadastro deste tutor.")); return; }
+                if(servicos.isEmpty()) { json(resp,404,Map.of("sucesso",false,"mensagem","Serviço \""+nomeServico+"\" não encontrado no cadastro.")); return; }
                 int petId=((Number)pets.get(0).get("codigo_pet")).intValue();
                 int servicoId=((Number)servicos.get(0).get("codigo_servico")).intValue();
                 try(Connection c=MySql.connect(); PreparedStatement ps=c.prepareStatement("INSERT INTO fila_atendimento (criticidade,data_hora_entrada,status,id_servicoFK,id_petFK) VALUES (?,CURRENT_TIMESTAMP,'Em espera',?,?)",Statement.RETURN_GENERATED_KEYS)) {
@@ -170,15 +194,18 @@ public class SmartPetServlet extends HttpServlet {
                 json(resp,200,Map.of("sucesso",true));return;
             }
             if ("/cadastrar/pet".equals(path)) {
-                Map<String,Object>b=body(req);String cpf=value(b,"cpf"),nome=value(b,"nome"),especie=value(b,"especie");int idade=Integer.parseInt(String.valueOf(b.get("idade")));
+                Map<String,Object>b=body(req);String cpf=Validacao.somenteDigitos(value(b,"cpf")),nome=value(b,"nome"),especie=value(b,"especie");
+                Integer idade=Validacao.inteiroOuNull(value(b,"idade"));
                 if(cpf.isBlank()||nome.isBlank()){json(resp,400,Map.of("sucesso",false,"mensagem","CPF e nome do pet são obrigatórios."));return;}
-                try(Connection c=MySql.connect()){c.setAutoCommit(false);try(PreparedStatement p=c.prepareStatement("INSERT INTO pet(nome,especie,idade,raca) VALUES(?,?,?,?)",Statement.RETURN_GENERATED_KEYS)){p.setString(1,nome);p.setString(2,especie);p.setInt(3,idade);p.setString(4,especie);p.executeUpdate();try(ResultSet k=p.getGeneratedKeys()){k.next();try(PreparedStatement t=c.prepareStatement("INSERT INTO tutela(codigo_pet,cpf) VALUES(?,?)")){t.setInt(1,k.getInt(1));t.setString(2,cpf);t.executeUpdate();}}}c.commit();}
+                if(!Validacao.cpfValido(cpf)){json(resp,400,Map.of("sucesso",false,"mensagem","CPF inválido: informe os 11 dígitos."));return;}
+                if(query("SELECT cpf FROM tutor WHERE cpf=? LIMIT 1",cpf).isEmpty()){json(resp,404,Map.of("sucesso",false,"mensagem","Tutor não encontrado para este CPF."));return;}
+                try(Connection c=MySql.connect()){c.setAutoCommit(false);try(PreparedStatement p=c.prepareStatement("INSERT INTO pet(nome,especie,idade,raca) VALUES(?,?,?,?)",Statement.RETURN_GENERATED_KEYS)){p.setString(1,Validacao.truncar(nome,100));p.setString(2,Validacao.truncar(especie,50));if(idade==null)p.setNull(3,java.sql.Types.INTEGER);else p.setInt(3,idade);p.setString(4,Validacao.truncar(especie,50));p.executeUpdate();try(ResultSet k=p.getGeneratedKeys()){k.next();try(PreparedStatement t=c.prepareStatement("INSERT INTO tutela(codigo_pet,cpf) VALUES(?,?)")){t.setInt(1,k.getInt(1));t.setString(2,cpf);t.executeUpdate();}}}c.commit();}
                 json(resp,201,Map.of("sucesso",true,"mensagem","Pet cadastrado."));return;
             }
             if ("/api/avaliacoes".equals(path)) {
-                Map<String,Object> b=body(req); int nota=Integer.parseInt(String.valueOf(b.get("nota")));
-                if(nota<1||nota>3){json(resp,400,Map.of("sucesso",false,"mensagem","A nota deve ser 1, 2 ou 3."));return;}
-                try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("INSERT INTO avaliacao (nota,comentario,id_atendimentoFK) VALUES (?,?,?)")){ps.setInt(1,nota);ps.setString(2,String.valueOf(b.getOrDefault("comentario",""))); Object id=b.getOrDefault("id_atendimento",b.get("servico_id")); if(id==null)ps.setNull(3,java.sql.Types.INTEGER);else ps.setInt(3,Integer.parseInt(id.toString()));ps.executeUpdate();}
+                Map<String,Object> b=body(req); Integer nota=Validacao.inteiroOuNull(String.valueOf(b.getOrDefault("nota","")));
+                if(nota==null||nota<1||nota>3){json(resp,400,Map.of("sucesso",false,"mensagem","A nota deve ser 1, 2 ou 3."));return;}
+                try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("INSERT INTO avaliacao (nota,comentario,id_atendimentoFK) VALUES (?,?,?)")){ps.setInt(1,nota);ps.setString(2,Validacao.truncar(String.valueOf(b.getOrDefault("comentario","")),255)); Object id=b.getOrDefault("id_atendimento",b.get("servico_id")); if(id==null)ps.setNull(3,java.sql.Types.INTEGER);else ps.setInt(3,Integer.parseInt(id.toString()));ps.executeUpdate();}
                 json(resp,201,Map.of("sucesso",true,"mensagem","Avaliação enviada."));return;
             }
             json(resp,404,Map.of("sucesso",false,"mensagem","Rota não encontrada."));
@@ -188,7 +215,20 @@ public class SmartPetServlet extends HttpServlet {
     @Override
     protected void doPut(HttpServletRequest req,HttpServletResponse resp)throws IOException{
         req.setCharacterEncoding("UTF-8");String path=req.getPathInfo();if(path==null||path.isEmpty())path=req.getServletPath();
-        if(path!=null&&path.matches("/api/pets/\\d+"))try{Map<String,Object>b=body(req);int id=Integer.parseInt(path.substring(path.lastIndexOf('/')+1));try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("UPDATE pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet SET p.peso=?,p.n_documento=?,p.idade=? WHERE p.codigo_pet=? AND t.cpf=?")){ps.setBigDecimal(1,new java.math.BigDecimal(value(b,"peso")));ps.setString(2,value(b,"n_documento"));ps.setInt(3,Integer.parseInt(String.valueOf(b.get("idade"))));ps.setInt(4,id);ps.setString(5,value(b,"cpf"));if(ps.executeUpdate()==0){json(resp,404,Map.of("sucesso",false,"mensagem","Pet não encontrado para este tutor."));return;}}json(resp,200,Map.of("sucesso",true));}catch(SQLException|NumberFormatException e){json(resp,400,Map.of("sucesso",false,"mensagem","Não foi possível atualizar o pet."));}else json(resp,404,Map.of("sucesso",false));
+        if(path!=null&&path.matches("/api/pets/\\d+"))try{Map<String,Object>b=body(req);int id=Integer.parseInt(path.substring(path.lastIndexOf('/')+1));
+            String cpf=Validacao.somenteDigitos(value(b,"cpf"));
+            if(!Validacao.cpfValido(cpf)){json(resp,400,Map.of("sucesso",false,"mensagem","CPF inválido: informe os 11 dígitos."));return;}
+            BigDecimal peso=Validacao.decimalOuNull(value(b,"peso"));
+            Integer idade=Validacao.inteiroOuNull(value(b,"idade"));
+            if(!value(b,"peso").isEmpty()&&peso==null){json(resp,400,Map.of("sucesso",false,"mensagem","Peso inválido. Use por exemplo 12.5"));return;}
+            if(!value(b,"idade").isEmpty()&&idade==null){json(resp,400,Map.of("sucesso",false,"mensagem","Idade inválida. Informe um número inteiro."));return;}
+            try(Connection c=MySql.connect();PreparedStatement ps=c.prepareStatement("UPDATE pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet SET p.peso=?,p.n_documento=?,p.idade=? WHERE p.codigo_pet=? AND t.cpf=?")){
+                if(peso==null)ps.setNull(1,java.sql.Types.DECIMAL);else ps.setBigDecimal(1,peso);
+                ps.setString(2,Validacao.truncar(value(b,"n_documento"),20));
+                if(idade==null)ps.setNull(3,java.sql.Types.INTEGER);else ps.setInt(3,idade);
+                ps.setInt(4,id);ps.setString(5,cpf);
+                if(ps.executeUpdate()==0){json(resp,404,Map.of("sucesso",false,"mensagem","Pet não encontrado para este tutor."));return;}
+            }json(resp,200,Map.of("sucesso",true));}catch(SQLException|NumberFormatException e){json(resp,400,Map.of("sucesso",false,"mensagem","Não foi possível atualizar o pet."));}else json(resp,404,Map.of("sucesso",false));
     }
 
     @Override
