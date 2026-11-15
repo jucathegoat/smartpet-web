@@ -47,3 +47,8 @@ build-war/
 *.war
 *.class
 *.bak
+
+# Spring Boot (backend-spring)
+backend-spring/target/
+backend-spring/tomcat-work/
+*.original

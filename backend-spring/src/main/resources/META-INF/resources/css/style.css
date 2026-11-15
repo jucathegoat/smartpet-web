@@ -1,0 +1,321 @@
+/* ==========================================================================
+   1. CONFIGURAÇÕES GERAIS E RESET
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f4f6f9;
+    color: #333333;
+    line-height: 1.6;
+}
+
+/* ==========================================================================
+   2. BARRA DE NAVEGAÇÃO (NAVBAR)
+   ========================================================================== */
+.navbar {
+    background-color: #3f51b5; /* Azul / Índigo alinhado com o aplicativo mobile */
+    color: #ffffff;
+    padding: 0.9rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+
+.navbar .logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.navbar nav {
+    display: flex;
+    gap: 20px;
+}
+
+.navbar nav a {
+    color: #c5cae9;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+}
+
+.navbar nav a:hover,
+.navbar nav a.active {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================================================
+   3. CONTAINER PRINCIPAL E ESTRUTURA
+   ========================================================================== */
+.container {
+    max-width: 1100px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.container h2 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+.acoes-topo {
+    margin-bottom: 20px;
+}
+
+.divisor {
+    margin: 20px 0;
+    border: 0;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* ==========================================================================
+   4. CARDS E FORMULÁRIOS
+   ========================================================================== */
+.card-busca,
+.card-detalhes {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin-bottom: 24px;
+}
+
+.card-detalhes h3 {
+    font-size: 1.4rem;
+    color: #1a202c;
+    margin-bottom: 8px;
+}
+
+.cabecalho-cliente {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.form-inline {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+input[type="text"],
+textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: #2d3748;
+    background-color: #ffffff;
+    transition: border-color 0.2s ease;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+    outline: none;
+    border-color: #3f51b5;
+    box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.15);
+}
+
+.input-inline {
+    width: auto;
+    display: inline-block;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    margin-right: 6px;
+}
+
+/* Formulário Especial de Bloqueio */
+.form-bloqueio {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #fff5f5;
+    padding: 18px;
+    border-radius: 8px;
+    border: 1px solid #feb2b2;
+}
+
+.form-bloqueio label {
+    color: #9b2c2c;
+    font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   5. TABELAS DE DADOS (FILA E PETS)
+   ========================================================================== */
+.tabela {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin-top: 10px;
+}
+
+.tabela th,
+.tabela td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid #edf2f7;
+    font-size: 0.95rem;
+}
+
+.tabela th {
+    background-color: #f7fafc;
+    font-weight: 600;
+    color: #4a5568;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.tabela tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* ==========================================================================
+   6. BOTÕES
+   ========================================================================== */
+.btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primario {
+    background-color: #3f51b5;
+    color: #ffffff;
+}
+.btn-primario:hover { background-color: #303f9f; }
+
+.btn-sucesso {
+    background-color: #2e7d32;
+    color: #ffffff;
+}
+.btn-sucesso:hover { background-color: #1b5e20; }
+
+.btn-perigo {
+    background-color: #d32f2f;
+    color: #ffffff;
+}
+.btn-perigo:hover { background-color: #c62828; }
+
+.btn-alerta {
+    background-color: #ed6c02;
+    color: #ffffff;
+    text-decoration: none;
+}
+.btn-alerta:hover { background-color: #e65100; }
+
+/* ==========================================================================
+   7. BADGES DE STATUS E ALERTAS DA API
+   ========================================================================== */
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-espera {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badge-atendimento {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.badge-ativo {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.badge-bloqueado {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Caixa de Alertas e Mensagens */
+.alerta {
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.alerta-erro {
+    background-color: #ffebe9;
+    color: #cf222e;
+    border: 1px solid #ff8182;
+}
+
+.alerta-sucesso {
+    background-color: #dafbe1;
+    color: #1a7f37;
+    border: 1px solid #4ac26b;
+}
+/* Estilos de fidelidade visual com tema Petshop */
+.navbar {
+    background-color: #1b5e20 !important; /* Verde escuro do Flutter SmartPet */
+}
+.navbar .logo {
+    color: #ffffff;
+    font-size: 1.3rem;
+}
+.navbar nav a:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff !important;
+}
+.btn-sucesso {
+    background-color: #2e7d32;
+    color: #ffffff;
+}
+.btn-sucesso:hover {
+    background-color: #1b5e20;
+}
