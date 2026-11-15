@@ -49,7 +49,7 @@ public class FilaController {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
-        filaService.adicionar(cliente, pet, servico);
+        filaService.adicionarPorNome(pet, servico);
         return "redirect:/fila";
     }
 
@@ -99,7 +99,8 @@ public class FilaController {
         if (pet == null || pet.trim().isEmpty()) pet = "Pet";
         if (servico == null || servico.trim().isEmpty()) servico = "Atendimento Geral";
 
-        ItemFilaDTO item = filaService.adicionar(cliente, pet, servico);
+        filaService.adicionarPorNome(pet, servico);
+        ItemFilaDTO item = new ItemFilaDTO(0, cliente, pet, servico);
         return ResponseEntity.ok(item);
     }
 

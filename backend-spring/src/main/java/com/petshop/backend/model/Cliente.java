@@ -28,6 +28,10 @@ public class Cliente {
     @Column(name = "senha", length = 255)
     private String senha;
 
+    /** ativo | Bloqueado (RF03) */
+    @Column(name = "status_conta", length = 20)
+    private String statusConta;
+
 
 
     public Cliente() {}
@@ -65,4 +69,23 @@ public class Cliente {
     // Na tabela tutor o "documento" e o proprio CPF
     public String getNDocumento() { return cpf; }
     public void setSenha(String senha) { this.senha = senha; }
+
+    public String getStatusConta() { return statusConta; }
+    public void setStatusConta(String statusConta) { this.statusConta = statusConta; }
+
+    /**
+     * RF03 — cliente bloqueado nao consegue entrar no app.
+     * O status e gravado como "Bloqueado: motivo", por isso usamos startsWith.
+     */
+    public boolean isBloqueado() {
+        return statusConta != null
+                && statusConta.trim().toLowerCase().startsWith("bloqueado");
+    }
+
+    /** RF03 — motivo informado no bloqueio, sem o prefixo "Bloqueado:". */
+    public String getMotivoBloqueio() {
+        if (!isBloqueado()) return null;
+        int i = statusConta.indexOf(':');
+        return i >= 0 ? statusConta.substring(i + 1).trim() : null;
+    }
 }

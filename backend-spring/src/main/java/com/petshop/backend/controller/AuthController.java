@@ -104,10 +104,21 @@ public class AuthController {
 
         if (opt.isPresent()) {
             Cliente c = opt.get();
+
+            // RF03 — cliente bloqueado nao entra no aplicativo
+            if (c.isBloqueado()) {
+                resp.put("sucesso", false);
+                resp.put("bloqueado", true);
+                resp.put("mensagem", "Sua conta está bloqueada. "
+                        + "Procure a loja para mais informações.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+            }
+
             resp.put("sucesso", true);
             resp.put("cpf", c.getCpf());
             resp.put("nome", c.getNome());
             resp.put("usuario", c.getUsuario());
+            resp.put("statusConta", c.getStatusConta());
             return ResponseEntity.ok(resp);
         } else {
             resp.put("sucesso", false);

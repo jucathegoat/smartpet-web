@@ -62,6 +62,10 @@ public class ItemFilaDTO {
         return chegada;
     }
 
+    public void setChegada(LocalDateTime chegada) {
+        this.chegada = chegada;
+    }
+
     public String getHorarioChegada() {
         return chegada != null ? chegada.format(FORMATO_HORA) : "";
     }

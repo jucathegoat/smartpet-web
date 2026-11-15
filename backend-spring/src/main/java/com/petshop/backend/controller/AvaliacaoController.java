@@ -66,7 +66,21 @@ public class AvaliacaoController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> salvarAvaliacaoApi(@RequestBody Map<String, Object> body) {
         Integer servicoId = body.get("servico_id") != null ? Integer.valueOf(body.get("servico_id").toString()) : 1;
-        Integer nota = body.get("nota") != null ? Integer.valueOf(body.get("nota").toString()) : 3;
+        Integer nota;
+        try {
+            nota = body.get("nota") != null ? Integer.valueOf(body.get("nota").toString()) : null;
+        } catch (NumberFormatException e) {
+            nota = null;
+        }
+
+        // RNF03 — a nota aceita exclusivamente 1, 2 ou 3
+        if (nota == null || nota < 1 || nota > 3) {
+            Map<String, Object> erro = new HashMap<>();
+            erro.put("sucesso", false);
+            erro.put("mensagem", "A nota deve ser 1, 2 ou 3.");
+            return ResponseEntity.badRequest().body(erro);
+        }
+
         String comentario = (String) body.getOrDefault("comentario", "");
 
         Optional<Avaliacao> opt = avaliacaoRepository.findByServicoId(servicoId);

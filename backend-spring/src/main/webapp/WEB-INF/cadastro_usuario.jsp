@@ -29,6 +29,7 @@
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
             <a href="/loja">Loja</a>
+            <a href="/vendas">Vendas</a>
             <a href="/avaliacoes">Avaliações</a>
             <a href="/notificacoes">Notificações</a>
             <a href="/logout" style="color: #ffcdd2;">Sair</a>

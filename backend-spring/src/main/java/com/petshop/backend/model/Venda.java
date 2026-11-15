@@ -25,6 +25,13 @@ public class Venda {
     @Column(name = "data_hora")
     private LocalDateTime dataHora;
 
+    @Column(name = "status", length = 20)
+    private String status;
+
+    /** Caixa em que a venda foi lancada (vira receita no fluxo de caixa). */
+    @Column(name = "id_caixaFK")
+    private Integer idCaixa;
+
     public Venda() {
     }
 
@@ -67,4 +74,10 @@ public class Venda {
     public void setDataHora(LocalDateTime dataHora) {
         this.dataHora = dataHora;
     }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public Integer getIdCaixa() { return idCaixa; }
+    public void setIdCaixa(Integer idCaixa) { this.idCaixa = idCaixa; }
 }

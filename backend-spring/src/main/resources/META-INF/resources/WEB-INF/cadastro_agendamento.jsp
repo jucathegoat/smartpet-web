@@ -28,6 +28,7 @@
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
             <a href="/loja">Loja</a>
+            <a href="/vendas">Vendas</a>
             <a href="/caixa">Caixa</a>
             <a href="/avaliacoes">Avaliações</a>
             <a href="/notificacoes">Notificações</a>
