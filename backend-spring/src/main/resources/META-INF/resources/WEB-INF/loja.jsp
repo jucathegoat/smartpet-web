@@ -4,24 +4,25 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Loja / Produtos - Smart Pet Admin</title>
+    <title>Loja - Smart Pet Admin</title>
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        .split-view {
-            display: grid;
-            grid-template-columns: 2fr 1.2fr;
-            gap: 2rem;
+        .foto-produto {
+            width: 56px; height: 56px; object-fit: cover;
+            border-radius: 8px; border: 1px solid #e0e0e0;
+            background: #f5f5f5; display: block;
         }
-        .card-form {
-            background: #fff;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-            height: fit-content;
+        .sem-foto {
+            width: 56px; height: 56px; border-radius: 8px;
+            border: 1px dashed #ccc; background: #fafafa;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; color: #bbb;
         }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.9rem; }
-        .form-group input, .form-group select { width: 100%; padding: 0.65rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .preview {
+            width: 70px; height: 70px; object-fit: cover;
+            border-radius: 8px; border: 1px solid #ddd; display: none;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -40,14 +41,26 @@
         </nav>
     </header>
     <main class="container">
-        <h2>Catálogo de Produtos (Loja Virtual & Física)</h2>
-        <p style="color: #666; margin-bottom: 1.5rem;">Produtos sincronizados diretamente com a aba Loja do aplicativo móvel.</p>
+        <h2>Loja / Estoque</h2>
+        <p style="color: #666; margin-bottom: 1.5rem;">Produtos disponíveis para venda. Cole o link da foto e ela aparece na hora.</p>
+
+        <c:if test="${not empty mensagem}">
+            <div style="background:#e8f5e9; border:1px solid #a5d6a7; color:#2e7d32; padding:1rem 1.2rem; border-radius:8px; margin-bottom:1.4rem; font-weight:600;">
+                ✅ ${mensagem}
+            </div>
+        </c:if>
+        <c:if test="${not empty erro}">
+            <div style="background:#ffebee; border:1px solid #ef9a9a; color:#c62828; padding:1rem 1.2rem; border-radius:8px; margin-bottom:1.4rem; font-weight:600;">
+                ⚠️ ${erro}
+            </div>
+        </c:if>
 
         <div class="split-view">
             <div>
                 <table class="tabela">
                     <thead>
                         <tr>
+                            <th>Foto</th>
                             <th>#Cód</th>
                             <th>Produto</th>
                             <th>Marca</th>
@@ -60,6 +73,18 @@
                     <tbody>
                         <c:forEach var="prod" items="${produtos}">
                             <tr>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${prod.temFoto}">
+                                            <img class="foto-produto" src="${prod.url}" alt="${prod.nome}"
+                                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                                            <div class="sem-foto" style="display:none;">🐾</div>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <div class="sem-foto">🐾</div>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
                                 <td><strong>#${prod.codigo}</strong></td>
                                 <td>${prod.nome}</td>
                                 <td>${prod.marca}</td>
@@ -76,7 +101,7 @@
                         </c:forEach>
                         <c:if test="${empty produtos}">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: #888; padding: 2rem;">Nenhum produto cadastrado na loja.</td>
+                                <td colspan="8" style="text-align: center; color: #888; padding: 2rem;">Nenhum produto cadastrado na loja.</td>
                             </tr>
                         </c:if>
                     </tbody>
@@ -84,39 +109,59 @@
             </div>
 
             <div class="card-form">
-                <h3>➕ Cadastrar Novo Produto</h3>
-                <p style="color: #666; font-size: 0.85rem; margin-bottom: 1rem;">O produto cadastrado fica visível no app.</p>
+                <h3>➕ Cadastrar / Atualizar Produto</h3>
+                <p style="color: #666; font-size: 0.85rem; margin-bottom: 1rem;">
+                    Cole o link da imagem no campo Foto. Ela aparece na tabela e no app automaticamente.
+                </p>
                 <form action="/admin/produtos/salvar" method="POST">
                     <div class="form-group">
-                        <label>Nome do Produto</label>
-                        <input type="text" name="nome" required placeholder="Ex: Ração Premier 15kg">
+                        <label>Código (deixe vazio para novo)</label>
+                        <input type="number" name="codigo" placeholder="Ex: 9">
                     </div>
                     <div class="form-group">
-                        <label>Marca / Fabricante</label>
-                        <input type="text" name="marca" placeholder="Ex: Premier Pet">
+                        <label>Nome do Produto</label>
+                        <input type="text" name="nome" required placeholder="Ex: Ração Golden 10kg">
+                    </div>
+                    <div class="form-group">
+                        <label>Marca</label>
+                        <input type="text" name="marca" placeholder="Ex: Golden">
                     </div>
                     <div class="form-group">
                         <label>Categoria</label>
-                        <select name="categoria">
-                            <option value="Alimento">Alimento / Ração</option>
-                            <option value="Higiene">Higiene & Beleza</option>
-                            <option value="Acessórios">Acessórios</option>
-                            <option value="Brinquedos">Brinquedos</option>
-                            <option value="Medicamentos">Medicamentos</option>
-                        </select>
+                        <input type="text" name="categoria" placeholder="Ex: Ração / Higiene / Brinquedos">
                     </div>
                     <div class="form-group">
-                        <label>Quantidade em Estoque</label>
-                        <input type="number" name="estoque" required value="10" min="0">
+                        <label>Estoque (unidades)</label>
+                        <input type="number" name="estoque" value="1" min="0" required>
                     </div>
                     <div class="form-group">
-                        <label>Preço de Venda (R$)</label>
-                        <input type="number" step="0.01" name="preco" required placeholder="Ex: 89.90">
+                        <label>Preço (R$)</label>
+                        <input type="number" name="preco" step="0.01" min="0" required placeholder="Ex: 159.90">
                     </div>
-                    <button type="submit" class="btn btn-sucesso" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem;">Cadastrar Produto</button>
+                    <div class="form-group">
+                        <label>Foto (link da imagem)</label>
+                        <input type="text" name="url" id="campoUrl"
+                               placeholder="https://exemplo.com/foto.jpg"
+                               oninput="mostrarPreview(this.value)">
+                        <img id="previewImg" class="preview" alt="Prévia da foto"
+                             onerror="this.style.display='none';">
+                    </div>
+                    <button type="submit" class="btn btn-sucesso" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem;">Salvar Produto</button>
                 </form>
             </div>
         </div>
     </main>
+    <script>
+        // Mostra a foto na hora em que o link é colado
+        function mostrarPreview(valor) {
+            var img = document.getElementById('previewImg');
+            if (valor && valor.trim().length > 8) {
+                img.src = valor.trim();
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

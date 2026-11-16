@@ -27,6 +27,10 @@ public class Produto {
     @Column(name = "preco", nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;
 
+    /** Link da foto do produto (coluna url, ja existente no banco). */
+    @Column(name = "url", length = 500)
+    private String url;
+
     public Produto() {}
 
     public Produto(String nome, String marca, String categoria, Integer estoque, BigDecimal preco) {
@@ -54,4 +58,12 @@ public class Produto {
 
     public BigDecimal getPreco() { return preco; }
     public void setPreco(BigDecimal preco) { this.preco = preco; }
+
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
+
+    /** True quando existe uma foto cadastrada. */
+    public boolean isTemFoto() {
+        return url != null && !url.isBlank();
+    }
 }
