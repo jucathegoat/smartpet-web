@@ -133,4 +133,95 @@ public class PetController {
         resp.put("mensagem", "Pet cadastrado com sucesso!");
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
+
+    // ==========================================================
+    // API DO APP — pet individual
+    // (o Flutter usa estas rotas em tela_pets.dart e tela_edicao_pet.dart)
+    // ==========================================================
+
+    @GetMapping("/api/pets/{id}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> buscarPetApi(@PathVariable("id") Integer id) {
+        Pet p = petRepository.findById(id).orElse(null);
+        if (p == null) {
+            Map<String, Object> erro = new HashMap<>();
+            erro.put("sucesso", false);
+            erro.put("mensagem", "Pet não encontrado");
+            return ResponseEntity.status(404).body(erro);
+        }
+        return ResponseEntity.ok(petParaMapa(p));
+    }
+
+    @PutMapping("/api/pets/{id}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> atualizarPetApi(
+            @PathVariable("id") Integer id,
+            @RequestBody Map<String, Object> body) {
+
+        Pet p = petRepository.findById(id).orElse(null);
+        if (p == null) {
+            Map<String, Object> erro = new HashMap<>();
+            erro.put("sucesso", false);
+            erro.put("mensagem", "Pet não encontrado");
+            return ResponseEntity.status(404).body(erro);
+        }
+
+        if (body.get("peso") != null && !body.get("peso").toString().isBlank()) {
+            try {
+                p.setPeso(new java.math.BigDecimal(body.get("peso").toString()));
+            } catch (NumberFormatException ignored) { }
+        }
+        if (body.get("idade") != null && !body.get("idade").toString().isBlank()) {
+            try {
+                p.setIdade(Integer.valueOf(body.get("idade").toString()));
+            } catch (NumberFormatException ignored) { }
+        }
+        if (body.get("n_documento") != null && !body.get("n_documento").toString().isBlank()) {
+            p.setCpfTutor(body.get("n_documento").toString());
+        }
+
+        petRepository.save(p);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("sucesso", true);
+        resp.put("mensagem", "Pet atualizado com sucesso!");
+        resp.put("pet", petParaMapa(p));
+        return ResponseEntity.ok(resp);
+    }
+
+    @DeleteMapping("/api/pets/{id}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> excluirPetApi(
+            @PathVariable("id") Integer id,
+            @RequestParam(value = "cpf", required = false) String cpf) {
+
+        if (!petRepository.existsById(id)) {
+            Map<String, Object> erro = new HashMap<>();
+            erro.put("sucesso", false);
+            erro.put("mensagem", "Pet não encontrado");
+            return ResponseEntity.status(404).body(erro);
+        }
+        petRepository.deleteById(id);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("sucesso", true);
+        resp.put("mensagem", "Pet excluído com sucesso.");
+        return ResponseEntity.ok(resp);
+    }
+
+    /** Monta o JSON de um pet do mesmo jeito que a listagem do tutor. */
+    private Map<String, Object> petParaMapa(Pet p) {
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", p.getId());
+        item.put("codigoPet", p.getId());
+        item.put("nome", p.getNome());
+        item.put("especie", p.getEspecie());
+        item.put("raca", p.getRaca());
+        item.put("porte", p.getPorte());
+        item.put("peso", p.getPeso());
+        item.put("idade", p.getIdade() != null ? p.getIdade() : 1);
+        item.put("n_documento", p.getCpfTutor());
+        item.put("cpf", p.getCpfTutor());
+        return item;
+    }
 }

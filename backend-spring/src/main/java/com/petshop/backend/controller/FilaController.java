@@ -15,9 +15,15 @@ import java.util.List;
 public class FilaController {
 
     private final FilaService filaService;
+    private final com.petshop.backend.repository.PetRepository petRepository;
+    private final com.petshop.backend.repository.ClienteRepository clienteRepository;
 
-    public FilaController(FilaService filaService) {
+    public FilaController(FilaService filaService,
+                          com.petshop.backend.repository.PetRepository petRepository,
+                          com.petshop.backend.repository.ClienteRepository clienteRepository) {
         this.filaService = filaService;
+        this.petRepository = petRepository;
+        this.clienteRepository = clienteRepository;
     }
 
     // ==========================================================
@@ -108,5 +114,89 @@ public class FilaController {
     @ResponseBody
     public ResponseEntity<ItemFilaDTO> chamarProximoApi() {
         return ResponseEntity.ok(filaService.chamarProximo());
+    }
+
+    // ==========================================================
+    // API DO APP — fila de um cliente especifico
+    // (tela_meus_atendimentos.dart usa /api/fila/cliente/{cpf}
+    //  e /api/fila/{id}/cancelar)
+    // ==========================================================
+
+    @GetMapping("/api/fila/cliente/{cpf}")
+    @ResponseBody
+    public ResponseEntity<List<java.util.Map<String, Object>>> filaDoClienteApi(
+            @PathVariable("cpf") String cpf) {
+
+        List<ItemFilaDTO> todos = filaService.listarTodos();
+
+        // Pets do tutor: o app manda o CPF do tutor logado.
+        // Alguns pets foram gravados com o n_documento do tutor em vez do CPF,
+        // por isso buscamos pelos dois.
+        java.util.List<com.petshop.backend.model.Pet> pets =
+                new java.util.ArrayList<>(petRepository.findByCpfTutor(cpf));
+
+        com.petshop.backend.model.Cliente tutor =
+                clienteRepository.findById(cpf).orElse(null);
+        if (tutor != null) {
+            String doc = tutor.getNDocumento();
+            if (doc != null && !doc.isBlank() && !doc.equals(cpf)) {
+                pets.addAll(petRepository.findByCpfTutor(doc));
+            }
+        }
+
+        // ArrayList exigido pelo RNF04
+        java.util.List<java.util.Map<String, Object>> resposta = new java.util.ArrayList<>();
+        int posicao = 0;
+
+        for (ItemFilaDTO item : todos) {
+            boolean doCliente = false;
+            for (com.petshop.backend.model.Pet p : pets) {
+                if (p.getNome() != null && p.getNome().equalsIgnoreCase(item.getNomePet())) {
+                    doCliente = true;
+                    break;
+                }
+            }
+            if (!doCliente) {
+                continue;
+            }
+            if ("Em espera".equalsIgnoreCase(item.getStatus())) {
+                posicao++;
+            }
+            java.util.Map<String, Object> linha = new java.util.HashMap<>();
+            linha.put("id", item.getId());
+            linha.put("nomePet", item.getNomePet());
+            linha.put("servico", item.getServico());
+            linha.put("status", item.getStatus());
+            linha.put("statusClass", item.getStatusClass());
+            linha.put("posicao", "Em espera".equalsIgnoreCase(item.getStatus()) ? posicao : "-");
+            linha.put("esperaMinutos", item.getMinutosEspera());
+            linha.put("minutosEspera", item.getMinutosEspera());
+            linha.put("horarioChegada", item.getHorarioChegada());
+            linha.put("motivoCancelamento", item.getMotivoCancelamento());
+            resposta.add(linha);
+        }
+        return ResponseEntity.ok(resposta);
+    }
+
+    @PostMapping("/api/fila/{id}/cancelar")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> cancelarApi(
+            @PathVariable("id") Integer id,
+            @RequestParam(value = "cpf", required = false) String cpf,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+
+        String motivo = body != null ? body.get("motivo") : null;
+        if (motivo == null || motivo.isBlank()) {
+            motivo = "Cancelado pelo cliente no aplicativo";
+        }
+
+        boolean ok = filaService.cancelar(id, motivo);
+
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("sucesso", ok);
+        resp.put("mensagem", ok
+                ? "Atendimento cancelado."
+                : "Não foi possível cancelar o atendimento.");
+        return ResponseEntity.ok(resp);
     }
 }
