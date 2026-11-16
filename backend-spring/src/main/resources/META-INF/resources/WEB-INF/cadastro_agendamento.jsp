@@ -24,6 +24,8 @@
     <header class="navbar">
         <div class="logo">🐾 Smart Pet Admin</div>
         <nav>
+            <a href="/balconista">Balcão</a>
+            <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila</a>
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
@@ -42,22 +44,24 @@
 
             <form action="/admin/agendamentos/novo" method="POST">
                 <div class="form-group">
-                    <label>Nome do Cliente / Tutor</label>
-                    <input type="text" name="cliente" required placeholder="Ex: Lucas Ferreira">
-                </div>
-                <div class="form-group">
-                    <label>Nome do Pet</label>
-                    <input type="text" name="pet" required placeholder="Ex: Bob">
-                </div>
-                <div class="form-group">
-                    <label>Serviço Desejado</label>
-                    <select name="servico" required>
-                        <option value="Banho e Tosa">Banho e Tosa</option>
-                        <option value="Consulta Veterinária">Consulta Veterinária</option>
-                        <option value="Vacinação">Vacinação</option>
-                        <option value="Exame Geral">Exame Geral</option>
-                        <option value="Hidratação e Corte">Hidratação e Corte</option>
+                    <label>Pet cadastrado (lista do banco)</label>
+                    <select name="idPet" required>
+                        <option value="">Selecione o pet...</option>
+                        <c:forEach var="p" items="${pets}">
+                            <option value="${p.id}">${p.nome} — ${p.especie}</option>
+                        </c:forEach>
                     </select>
+                    <small style="color:#888;">Os pets vêm da tabela <code>pet</code>. Cadastre novos em Clientes → Editar.</small>
+                </div>
+                <div class="form-group">
+                    <label>Serviço Desejado (lista do banco)</label>
+                    <select name="idServico" required>
+                        <option value="">Selecione o serviço...</option>
+                        <c:forEach var="s" items="${servicos}">
+                            <option value="${s.idServico}">${s.nome} — R$ ${s.preco}</option>
+                        </c:forEach>
+                    </select>
+                    <small style="color:#888;">Os serviços vêm da tabela <code>servico</code>.</small>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
                     <button type="submit" class="btn btn-sucesso" style="flex: 1; padding: 0.8rem;">Adicionar à Fila</button>

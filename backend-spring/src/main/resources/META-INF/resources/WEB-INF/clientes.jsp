@@ -11,6 +11,8 @@
     <header class="navbar">
         <div class="logo">🐾 Smart Pet Admin</div>
         <nav>
+            <a href="/balconista">Balcão</a>
+            <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila</a>
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
@@ -84,12 +86,18 @@
                         <td>
                             <c:choose>
                                 <c:when test="${c.bloqueado}">
+                                    <a href="/admin/clientes/editar?cpf=${c.cpf}"
+                                       class="btn btn-sucesso btn-sm"
+                                       style="text-decoration:none; display:inline-block; margin-right:0.3rem;">Editar</a>
                                     <form action="/admin/clientes/desbloquear" method="POST" style="display:inline;">
                                         <input type="hidden" name="cpf" value="${c.cpf}">
                                         <button type="submit" class="btn btn-sucesso btn-sm">Desbloquear</button>
                                     </form>
                                 </c:when>
                                 <c:otherwise>
+                                    <a href="/admin/clientes/editar?cpf=${c.cpf}"
+                                       class="btn btn-sucesso btn-sm"
+                                       style="text-decoration:none; display:inline-block; margin-right:0.3rem;">Editar</a>
                                     <form action="/admin/clientes/bloquear" method="POST" style="display:inline;">
                                         <input type="hidden" name="cpf" value="${c.cpf}">
                                         <input type="text" name="motivo" required placeholder="Motivo do bloqueio"

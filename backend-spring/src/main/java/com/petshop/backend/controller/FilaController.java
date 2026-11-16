@@ -17,13 +17,16 @@ public class FilaController {
     private final FilaService filaService;
     private final com.petshop.backend.repository.PetRepository petRepository;
     private final com.petshop.backend.repository.ClienteRepository clienteRepository;
+    private final com.petshop.backend.repository.ServicoRepository servicoRepository;
 
     public FilaController(FilaService filaService,
                           com.petshop.backend.repository.PetRepository petRepository,
-                          com.petshop.backend.repository.ClienteRepository clienteRepository) {
+                          com.petshop.backend.repository.ClienteRepository clienteRepository,
+                          com.petshop.backend.repository.ServicoRepository servicoRepository) {
         this.filaService = filaService;
         this.petRepository = petRepository;
         this.clienteRepository = clienteRepository;
+        this.servicoRepository = servicoRepository;
     }
 
     // ==========================================================
@@ -35,27 +38,86 @@ public class FilaController {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
+        // Listas vindas do banco (nada fixo no codigo)
         model.addAttribute("fila", filaService.listarTodos());
+        model.addAttribute("servicos", servicoRepository.findAll());
+        model.addAttribute("pets", petRepository.findAll());
         return "fila";
     }
 
-    @GetMapping("/admin/agendamentos/novo")
-    public String novoAgendamentoWeb(HttpSession session) {
+    // ==========================================================
+    // RF05 — TELAS DE BALCONISTA E VETERINARIO
+    // O documento pede que a fila alterne estados "entre balconista
+    // e veterinario/atendente".
+    // ==========================================================
+
+    @GetMapping("/balconista")
+    public String telaBalconista(HttpSession session, Model model) {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
+        model.addAttribute("fila", filaService.listarTodos());
+        model.addAttribute("pets", petRepository.findAll());
+        model.addAttribute("servicos", servicoRepository.findAll());
+        return "balconista";
+    }
+
+    @GetMapping("/veterinario")
+    public String telaVeterinario(HttpSession session, Model model) {
+        if (session.getAttribute("adminLogado") == null) {
+            return "redirect:/login";
+        }
+        model.addAttribute("fila", filaService.listarTodos());
+        return "veterinario";
+    }
+
+    /** Balconista registra a chegada escolhendo pet e servico das listas do banco. */
+    @PostMapping("/balconista/registrar")
+    public String registrarChegada(@RequestParam("idPet") Integer idPet,
+                                   @RequestParam("idServico") Integer idServico,
+                                   HttpSession session,
+                                   org.springframework.web.servlet.mvc.support.RedirectAttributes redirect) {
+        if (session.getAttribute("adminLogado") == null) {
+            return "redirect:/login";
+        }
+        try {
+            filaService.adicionarPorId(idPet, idServico);
+            redirect.addFlashAttribute("mensagem", "Pet adicionado à fila de espera.");
+        } catch (Exception e) {
+            redirect.addFlashAttribute("erro", "Não foi possível adicionar: " + e.getMessage());
+        }
+        return "redirect:/balconista";
+    }
+
+    @GetMapping("/admin/agendamentos/novo")
+    public String novoAgendamentoWeb(HttpSession session, Model model) {
+        if (session.getAttribute("adminLogado") == null) {
+            return "redirect:/login";
+        }
+        // Listas suspensas vindas do banco (nada fixo no codigo)
+        model.addAttribute("pets", petRepository.findAll());
+        model.addAttribute("servicos", servicoRepository.findAll());
         return "cadastro_agendamento";
     }
 
     @PostMapping("/admin/agendamentos/novo")
-    public String salvarAgendamentoWeb(@RequestParam("cliente") String cliente,
-                                       @RequestParam("pet") String pet,
-                                       @RequestParam("servico") String servico,
-                                       HttpSession session) {
+    public String salvarAgendamentoWeb(
+            @RequestParam(value = "idPet", required = false) Integer idPet,
+            @RequestParam(value = "idServico", required = false) Integer idServico,
+            @RequestParam(value = "pet", required = false) String petNome,
+            @RequestParam(value = "servico", required = false) String servicoNome,
+            HttpSession session,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirect) {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
-        filaService.adicionarPorNome(pet, servico);
+        if (idPet != null && idServico != null) {
+            filaService.adicionarPorId(idPet, idServico);
+        } else {
+            // compatibilidade com o formulario antigo
+            filaService.adicionarPorNome(petNome, servicoNome);
+        }
+        redirect.addFlashAttribute("mensagem", "Pet adicionado à fila.");
         return "redirect:/fila";
     }
 

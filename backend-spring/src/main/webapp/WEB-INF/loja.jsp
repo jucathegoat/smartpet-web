@@ -29,6 +29,8 @@
     <header class="navbar">
         <div class="logo">🐾 Smart Pet Admin</div>
         <nav>
+            <a href="/balconista">Balcão</a>
+            <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila</a>
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>

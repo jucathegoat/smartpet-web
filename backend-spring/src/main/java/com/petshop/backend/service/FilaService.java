@@ -133,6 +133,16 @@ public class FilaService {
         return adicionar(idPet, idServico, "Normal");
     }
 
+
+    /**
+     * Adiciona na fila pelo id do pet e do servico (listas suspensas da tela).
+     * Usa os registros reais do banco em vez de nomes digitados.
+     */
+    @Transactional
+    public FilaAtendimento adicionarPorId(Integer idPet, Integer idServico) {
+        return adicionar(idPet, idServico, "Normal");
+    }
+
     /** Chama o proximo da fila (RF05). */
     @Transactional
     public ItemFilaDTO chamarProximo() {

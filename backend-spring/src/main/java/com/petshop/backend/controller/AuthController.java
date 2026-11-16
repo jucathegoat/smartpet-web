@@ -79,8 +79,19 @@ public class AuthController {
             return "redirect:/login";
         }
 
-        if (clienteRepository.existsById(cpf)) {
-            model.addAttribute("erro", "Já existe um cliente cadastrado com este CPF.");
+        // RF04 — validacao previa de CPF: avisa se ja existe ou se esta bloqueado
+        Optional<Cliente> existente = clienteRepository.findById(cpf);
+        if (existente.isPresent()) {
+            if (existente.get().isBloqueado()) {
+                model.addAttribute("erro",
+                        "CPF bloqueado. Motivo: " + existente.get().getMotivoBloqueio()
+                        + ". Procure a administração do Pet Shop.");
+            } else {
+                model.addAttribute("erro",
+                        "Já existe um cliente cadastrado com este CPF ("
+                        + existente.get().getNome() + ").");
+            }
+            model.addAttribute("cpfDigitado", cpf);
             return "cadastro_usuario";
         }
 
@@ -145,8 +156,18 @@ public class AuthController {
             return ResponseEntity.badRequest().body(resp);
         }
 
-        if (clienteRepository.existsById(cpf)) {
+        // RF03/RF04 — CPF bloqueado nao cria conta nova; CPF livre e liberado
+        Optional<Cliente> existenteApi = clienteRepository.findById(cpf);
+        if (existenteApi.isPresent()) {
+            Cliente jaCadastrado = existenteApi.get();
             resp.put("sucesso", false);
+            if (jaCadastrado.isBloqueado()) {
+                resp.put("bloqueado", true);
+                resp.put("mensagem",
+                        "CPF bloqueado. Motivo: " + jaCadastrado.getMotivoBloqueio());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+            }
+            resp.put("bloqueado", false);
             resp.put("mensagem", "CPF já cadastrado.");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(resp);
         }
@@ -157,5 +178,59 @@ public class AuthController {
         resp.put("sucesso", true);
         resp.put("mensagem", "Cliente cadastrado com sucesso!");
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+    }
+
+    // ==========================================================
+    // RF04 — VALIDACAO PREVIA DE CPF (consultada pelo app)
+    // Responde: "liberado", "ja existe" ou "bloqueado"
+    // ==========================================================
+
+    @GetMapping("/api/clientes/validar/{cpf}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> validarCpf(@PathVariable("cpf") String cpf) {
+        Map<String, Object> resp = new HashMap<>();
+        String limpo = cpf == null ? "" : cpf.replaceAll("[^0-9A-Za-z]", "");
+
+        if (limpo.length() < 11) {
+            resp.put("sucesso", false);
+            resp.put("situacao", "invalido");
+            resp.put("mensagem", "CPF inválido. Digite os 11 números.");
+            return ResponseEntity.badRequest().body(resp);
+        }
+
+        Optional<Cliente> opt = clienteRepository.findById(cpf);
+        if (opt.isEmpty()) {
+            // tenta sem pontuacao
+            for (Cliente c : clienteRepository.findAll()) {
+                if (c.getCpf() != null
+                        && c.getCpf().replaceAll("[^0-9A-Za-z]", "").equals(limpo)) {
+                    opt = Optional.of(c);
+                    break;
+                }
+            }
+        }
+
+        if (opt.isEmpty()) {
+            resp.put("sucesso", true);
+            resp.put("situacao", "liberado");
+            resp.put("mensagem", "CPF livre. O cadastro pode continuar.");
+            return ResponseEntity.ok(resp);
+        }
+
+        Cliente c = opt.get();
+        if (c.isBloqueado()) {
+            resp.put("sucesso", false);
+            resp.put("situacao", "bloqueado");
+            resp.put("nome", c.getNome());
+            resp.put("motivo", c.getMotivoBloqueio());
+            resp.put("mensagem", "CPF bloqueado. Motivo: " + c.getMotivoBloqueio());
+            return ResponseEntity.ok(resp);
+        }
+
+        resp.put("sucesso", false);
+        resp.put("situacao", "existe");
+        resp.put("nome", c.getNome());
+        resp.put("mensagem", "Já existe um cliente com este CPF (" + c.getNome() + ").");
+        return ResponseEntity.ok(resp);
     }
 }

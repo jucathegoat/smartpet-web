@@ -82,10 +82,28 @@ public class Cliente {
                 && statusConta.trim().toLowerCase().startsWith("bloqueado");
     }
 
-    /** RF03 — motivo informado no bloqueio, sem o prefixo "Bloqueado:". */
+    /**
+     * RF03 — motivo informado no bloqueio.
+     *
+     * <p>O banco define status_conta como varchar(20) e o schema nao pode ser
+     * alterado, por isso o motivo NAO e gravado dentro da coluna. A coluna
+     * guarda apenas "Bloqueado" e o motivo fica neste mapa em memoria.</p>
+     */
+    private static final java.util.Map<String, String> MOTIVOS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void registrarMotivo(String cpf, String motivo) {
+        if (cpf == null) return;
+        if (motivo == null || motivo.isBlank()) {
+            MOTIVOS.remove(cpf);
+        } else {
+            MOTIVOS.put(cpf, motivo.trim());
+        }
+    }
+
     public String getMotivoBloqueio() {
         if (!isBloqueado()) return null;
-        int i = statusConta.indexOf(':');
-        return i >= 0 ? statusConta.substring(i + 1).trim() : null;
+        String guardado = MOTIVOS.get(this.cpf);
+        return guardado != null ? guardado : "não informado";
     }
 }

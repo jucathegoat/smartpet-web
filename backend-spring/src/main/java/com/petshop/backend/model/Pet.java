@@ -15,6 +15,10 @@ public class Pet {
     @Column(name = "nome", nullable = false, length = 255)
     private String nome;
 
+    /** Cor do pet. Nao existe coluna propria no banco: fica gravada junto da raca. */
+    @Transient
+    private String cor;
+
     @Column(name = "raca", length = 50)
     private String raca;
 
@@ -53,6 +57,9 @@ public class Pet {
 
     public String getRaca() { return raca; }
     public void setRaca(String raca) { this.raca = raca; }
+
+    public String getCor() { return cor; }
+    public void setCor(String cor) { this.cor = cor; }
 
     public String getEspecie() { return especie; }
     public void setEspecie(String especie) { this.especie = especie; }
