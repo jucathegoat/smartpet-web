@@ -105,14 +105,37 @@ As credenciais ficam no `.env` (não commitar).
 | Spring Boot → banco Aiven | login real, dados reais nas telas |
 | `/clientes` | 4 tutores: Maria Jane, Marcelo, tutorTeste, Joao |
 | `/pets` | 4 pets: Garfield, Luke, Rex, Tornado |
-| `/loja` | 7 produtos com preço e estoque |
+| `/loja` | 7 produtos com preço, estoque **e foto por link** |
+| `/vendas` (RF06 loja) | venda de 2× ração, estoque 20→18, receita no caixa |
 | `/avaliacoes` | 2 avaliações |
 | `/notificacoes` | lê do banco |
 | `/caixa` (RF07) | abertura, entrada, saída, fechamento, saldo |
+| **`/balconista`** | registrar chegada (selects do banco), fila, modal de Ações |
+| **`/veterinario`** | em atendimento, aguardando, histórico |
+| **`/admin/clientes/editar`** | dados, pets (com cor), parentes |
 | `/api/servicos` | 5 serviços em JSON |
+| `/api/produtos` | 7 produtos com `url` |
+| `/api/fila` | fila real do banco |
+| `/api/fila/cliente/{cpf}` | atendimentos do cliente com posição e espera |
+| `/api/pets/{id}` | GET / PUT / DELETE |
+| `/api/clientes/validar/{cpf}` | liberado / existe / bloqueado / invalido |
 | `/caixa-api/status` | saldo em JSON |
 | `/login/usuario` | `MJ`/`12345` → JSON com sucesso |
 | Servlet antigo | intacto em `src/`, não foi tocado |
+
+### Testes de fluxo feitos hoje
+
+```
+Balconista registra Garfield + Banho  → fila: "4 Garfield Em espera"
+Balconista chama próximo              → fila: "3 Rex Em atendimento"
+Veterinário conclui o Rex             → fila: "3 Rex Concluído"
+
+Bloquear Joao (motivo)                → login Joao/ocara = HTTP 403
+Desbloquear Joao                      → login Joao/ocara = HTTP 200
+
+Editar Maria Jane (telefone)          → banco: (11) 98888-7777
+Adicionar pet Mel com cor             → banco: (16,'Mel','Cão','Poodle / Branco',4,6.50)
+```
 
 ### Teste do caixa (gravado no Aiven)
 
@@ -127,84 +150,43 @@ Saldo ........... R$ 255,00
 
 ---
 
-## 5. O que FALTA
+## 5. O que FALTA (atualizado em 16/11/2026)
 
-### 🔴 CRÍTICO — fila com dados falsos
+**Nenhum requisito do documento está pendente.** Os 7 RFs e os 4 RNFs foram implementados e
+verificados contra o banco real. O que resta são limitações impostas pelo schema (que não pode
+ser alterado) e defeitos de dados.
 
-`FilaService.java` tem dados inventados no construtor:
+### Limitações declaradas (não são bugs de código)
 
-```java
-public FilaService() {
-    adicionar("Carlos Silva", "Thor", "Banho e Tosa");
-    adicionar("Ana Souza", "Mel", "Consulta Veterinária");
-    adicionar("Marcos Lima", "Bob", "Vacinação");
-}
-```
+| # | Limitação | Motivo |
+|---|---|---|
+| 1 | Vínculos de parentesco (RF02) ficam em memória | `tutela.cpf` é `varchar(12)`; CPF formatado tem 14 caracteres |
+| 2 | Cor do pet (RF02) é gravada dentro de `pet.raca` | Não existe coluna `cor`; formato `"Poodle / Branco"` |
+| 3 | Motivo do bloqueio (RF03) fica em memória | `status_conta` é `varchar(20)`; a coluna guarda só `Bloqueado` |
 
-**Carlos Silva, Ana Souza e Marcos Lima não existem no banco.**
+### Defeitos conhecidos (não afetam funcionalidade)
 
-E a fila é `ArrayList` em memória:
-
-```java
-private final List<ItemFilaDTO> fila = Collections.synchronizedList(new ArrayList<>());
-```
-
-Consequências:
-- Reiniciar o servidor → fila volta aos 3 nomes falsos
-- Cancelamento **nunca chega ao banco**
-- A tabela `fila_atendimento` existe no Aiven e está **vazia**
-
-**Correção:** `FilaService` deve usar `FilaAtendimentoRepository` (já existe).
-
-### 🔴 RF06 — Registrar venda: NÃO EXISTE
-
-```
-GET /vendas  → 404
-GET /pedidos → 404
-```
-
-`Venda.java` e `VendaRepository.java` existem, mas **nenhum controller**.
-A loja mostra produtos e não faz nada ao clicar.
-
-### 🟠 RF03 — Bloquear cliente: NÃO EXISTE
-
-A coluna `tutor.status_conta` existe no banco. Ninguém lê nem escreve.
-
-### 🟠 RF01 — Consultar cliente por CPF: NÃO EXISTE
-
-Só lista todos. Sem campo de busca, sem mensagem "CPF não encontrado".
-
-### 🟡 RNF03 — Validar nota 1 a 3: NÃO EXISTE
-
-`AvaliacaoController.java` aceita qualquer inteiro:
-
-```java
-Integer nota = Integer.valueOf(body.get("nota").toString());
-```
-
-Aceita `nota: 999`.
-
-### 🟡 Imagens de produto: NÃO EXISTE
-
-- A coluna `produto.url` existe no banco
-- A entidade `Produto.java` **não tem** o campo
-- `loja.jsp` não tem `<img>`
-
-**Como deve funcionar:** campo de texto no formulário onde se cola a URL
-da imagem; na listagem aparece a foto; se vazio, aparece placeholder 🐾.
+| # | Defeito | Situação |
+|---|---|---|
+| 4 | `ddl-auto=update` gera aviso `there can be only one auto column` em `UsuarioFunc` | Inofensivo; a tabela existe e funciona |
+| 5 | `pet.n_documento` com valores `XV5123`, `6343GER`, `GBV234` (não são CPF) | Dado do banco; a consulta busca por CPF **e** por esse campo |
 
 ### 🟡 JSPs duplicados (dívida técnica)
 
-Os 9 JSPs existem em **dois** lugares:
+Os 13 JSPs existem em **dois lugares** e são sincronizados à mão:
 
 ```
-backend-spring/src/main/webapp/WEB-INF/                    ← cópia espelho
-backend-spring/src/main/resources/META-INF/resources/WEB-INF/  ← ativa
+src/main/webapp/WEB-INF/                        ← fonte
+src/main/resources/META-INF/resources/WEB-INF/  ← o que o Tomcat embutido serve
 ```
 
-Editar um **não** atualiza o outro. Sincronizar à mão por enquanto.
+**Sempre que editar um JSP, copie para o outro lado:**
 
----
+```powershell
+cd backend-spring
+Get-ChildItem src/main/resources/META-INF/resources/WEB-INF/*.jsp |
+  ForEach-Object { Copy-Item $_.FullName "src/main/webapp/WEB-INF/$($_.Name)" -Force }
+```
 
 ## 6. Armadilhas de build (já resolvidas, mas cuidado ao mexer)
 
@@ -246,33 +228,41 @@ Se o problema voltar, apague `backend-spring/tomcat-work/` e recompile.
 
 ## 7. Requisitos do documento — situação
 
-| Requisito | Descrição | Estado |
+| Requisito | Estado | Onde |
 |---|---|---|
-| RNF01 | JSP + Servlets | ✅ atendido |
-| RNF04 | OO + ArrayList | ✅ atendido |
-| Seção 3.1/3.3 | Spring Boot + API REST | ✅ atendido |
-| RF07 | Controle de caixa | ✅ **completo e testado** |
-| RF05 | Gerir fila | ⚠️ existe mas em memória, com dados falsos |
-| RNF03 | Nota 1 a 3 | ⚠️ existe, falta validação |
-| RF06 | Registrar venda | ❌ não existe |
-| RF03 | Bloquear cliente | ❌ não existe |
-| RF01 | Consultar por CPF | ❌ não existe |
+| **RF01** Consultar cliente por CPF | ✅ | `/clientes?busca=` e `GET /api/clientes/{cpf}` |
+| **RF02** Editar cliente (telefone, pet, raça, cor, parentes, novo pet) | ✅ | `/admin/clientes/editar` |
+| **RF03** Bloquear cliente com motivo | ✅ | `POST /admin/clientes/bloquear`, 403 no login e no cadastro |
+| **RF04** Cadastro manual com validação prévia | ✅ | `GET /api/clientes/validar/{cpf}` → liberado / existe / bloqueado / invalido |
+| **RF05** Visualizar e gerir fila (balconista ↔ veterinário) | ✅ | `/fila`, `/balconista`, `/veterinario`, modal de Ações |
+| **RF06** Avaliação rápida (Ruim/Bom/Excelente + nova tentativa) | ✅ | `lib/servicos/avaliacao_helper.dart` |
+| **RF07** Controle financeiro (receitas, despesas, saldo) | ✅ | `/caixa`, `/caixa-api/*`, `/vendas` |
+| **RNF01** HTML, CSS, JSP e Servlets | ✅ | 13 JSPs + `HttpSession` + Tomcat embutido |
+| **RNF02** Flutter com interface simples | ✅ | `smartpet-mobile` |
+| **RNF03** SQL + nota só 1, 2 ou 3 | ✅ | `AvaliacaoController.salvarAvaliacaoApi` → HTTP 400 fora de 1–3 |
+| **RNF04** OO, `ArrayList`, falhas sem fechar | ✅ | 14 entidades, `ArrayList` em `FilaService`/`ClienteAdminController`, try/catch no app |
 
----
+### Extra (fora do documento, pedido pelo João Victor no WhatsApp)
 
-## 8. Ordem de trabalho recomendada
+| Item | Estado |
+|---|---|
+| Modal "Ações" na fila (cancelar/concluir, sem apagar) | ✅ |
+| Serviços e pets vêm do banco (não fixos no código) | ✅ |
+| Fotos dos produtos por link (`produto.url`) | ✅ |
+| Endpoints do app: `/api/pets/{id}`, `/api/fila/cliente/{cpf}`, `/api/fila/{id}/cancelar` | ✅ |
 
-| # | Tarefa | Tempo |
-|---|---|---|
-| 1 | Fila no banco (remover dados falsos) | 1h |
-| 2 | RF06 — registrar venda | 1h30 |
-| 3 | Imagens por URL | 40min |
-| 4 | RF03 — bloquear cliente | 45min |
-| 5 | RF01 — buscar por CPF | 30min |
-| 6 | RNF03 — validar nota 1–3 | 10min |
-| 7 | JSPs duplicados | 20min |
+## 8. Ordem de trabalho
 
----
+**Concluído.** Todos os requisitos do documento estão atendidos.
+
+Se for continuar, a ordem que faz sentido é:
+
+1. **Autorização para alterar o schema** — resolveria as 3 limitações da seção 5 de uma vez:
+   - `ALTER TABLE tutela MODIFY cpf VARCHAR(14)` → parentes passam a persistir
+   - `ALTER TABLE pet ADD COLUMN cor VARCHAR(30)` → cor em coluna própria
+   - `ALTER TABLE tutor MODIFY status_conta VARCHAR(255)` → motivo do bloqueio persistido
+2. **Corrigir os dados de `pet.n_documento`** — os 3 valores que não são CPF
+3. **Juntar os JSPs duplicados** — mudança estrutural, avisar antes de mexer
 
 ## 9. Justificativa Spring vs Servlet (para o professor)
 
