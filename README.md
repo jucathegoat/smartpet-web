@@ -11,6 +11,29 @@ Este repositório é o **backend**. Ele atende duas coisas ao mesmo tempo:
 
 Os dois rodam no **mesmo Tomcat, na mesma porta**. Não são duas aplicações — é uma só, com rotas diferentes.
 
+> **Estado em 16/11/2026:** os 7 requisitos funcionais e os 4 não funcionais do documento estão
+> implementados e verificados contra o banco MySQL do Aiven. Detalhes em
+> [`ESTADO-DO-PROJETO.md`](ESTADO-DO-PROJETO.md).
+
+## Telas do painel
+
+| Rota | Para quem | O que faz |
+|---|---|---|
+| `/login` | — | acesso do painel (`adm` / `adm123`) |
+| `/balconista` | balconista | registra a chegada do pet (listas do banco), vê a fila e chama o próximo |
+| `/veterinario` | veterinário | pets em atendimento, fila de espera e histórico do dia |
+| `/fila` | admin | fila completa, com o modal **Ações** (concluir ou cancelar com motivo) |
+| `/clientes` | admin | busca por CPF/nome (RF01), bloquear/desbloquear (RF03) e **Editar** (RF02) |
+| `/admin/clientes/editar` | admin | telefone, e-mail, pets (com cor) e CPFs de parentes (RF02) |
+| `/loja` | admin | produtos com foto por link e estoque |
+| `/vendas` | admin | registra venda, baixa o estoque e lança a receita no caixa |
+| `/caixa` | admin | abertura, movimentos, saldo e fechamento (RF07) |
+| `/avaliacoes` | admin | avaliações de 1 a 3 recebidas do app |
+| `/notificacoes` | admin | avisos |
+
+Nada é excluído na fila: o status muda (`Em espera` → `Em atendimento` → `Concluído`, ou `Cancelado`
+com o motivo gravado), para preservar o histórico.
+
 ---
 
 ## 📋 Índice
