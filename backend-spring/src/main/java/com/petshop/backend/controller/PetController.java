@@ -23,13 +23,16 @@ public class PetController {
     private final PetRepository petRepository;
     private final ClienteRepository clienteRepository;
     private final CaixaRepository caixaRepository;
+    private final com.petshop.backend.repository.TutelaRepository tutelaRepository;
 
     public PetController(PetRepository petRepository,
                          ClienteRepository clienteRepository,
-                         CaixaRepository caixaRepository) {
+                         CaixaRepository caixaRepository,
+                         com.petshop.backend.repository.TutelaRepository tutelaRepository) {
         this.petRepository = petRepository;
         this.clienteRepository = clienteRepository;
         this.caixaRepository = caixaRepository;
+        this.tutelaRepository = tutelaRepository;
     }
 
     @GetMapping("/pets")
@@ -92,6 +95,18 @@ public class PetController {
             if (doc != null && !doc.isBlank() && !doc.equals(cpf)) {
                 pets.addAll(petRepository.findByCpfTutor(doc));
             }
+        }
+        // O vinculo oficial pet <-> tutor esta na tabela `tutela`.
+        // Sem consulta-la, o pet nao aparece quando o n_documento guarda
+        // um codigo (ex: KBXN007) em vez do CPF do tutor.
+        try {
+            for (Integer idPet : tutelaRepository.findCodigoPetByCpf(cpf)) {
+                if (pets.stream().noneMatch(p -> idPet.equals(p.getId()))) {
+                    petRepository.findById(idPet).ifPresent(pets::add);
+                }
+            }
+        } catch (Exception e) {
+            // tabela tutela ausente em alguma instalacao: segue sem ela
         }
         List<Map<String, Object>> lista = new ArrayList<>();
         for (Pet p : pets) {

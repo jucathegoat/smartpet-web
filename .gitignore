@@ -52,3 +52,7 @@ build-war/
 backend-spring/target/
 backend-spring/tomcat-work/
 *.original
+
+# backups do .env (podem conter senha)
+.env.bak*
+*.env.bak*
