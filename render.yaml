@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: smartpet
+    runtime: docker
+    dockerfilePath: ./backend-spring/Dockerfile
+    dockerContext: ./backend-spring
+    plan: free
+    region: oregon
+    healthCheckPath: /login
+    envVars:
+      - key: SMARTPET_DB_URL
+        sync: false
+      - key: SMARTPET_DB_USER
+        sync: false
+      - key: SMARTPET_DB_PASSWORD
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xms64m -Xmx320m -Dfile.encoding=UTF-8
