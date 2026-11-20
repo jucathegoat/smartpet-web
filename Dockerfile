@@ -14,4 +14,4 @@ COPY --from=build /build/build-war/smartpet.war /usr/local/tomcat/webapps/ROOT.w
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "sed -i \"s/port=\\\"8080\\\"/port=\\\"${PORT}\\\"/g\" /usr/local/tomcat/conf/server.xml && catalina.sh run"]
+CMD ["sh", "-c", "sed -i 's/port=\"8005\"/port=\"-1\"/g' /usr/local/tomcat/conf/server.xml && sed -i \"s/port=\\\"8080\\\"/port=\\\"${PORT}\\\"/g\" /usr/local/tomcat/conf/server.xml && catalina.sh run"]
