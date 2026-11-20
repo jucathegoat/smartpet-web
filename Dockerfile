@@ -7,12 +7,11 @@ COPY src ./src
 RUN mvn -B -q package -DskipTests
 
 # ---- runtime ----
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-COPY --from=build /build/target/*.jar app.jar
+FROM tomcat:11.0-jdk21-temurin
+RUN rm -rf /usr/local/tomcat/webapps/*
+COPY --from=build /build/build-war/smartpet.war /usr/local/tomcat/webapps/ROOT.war
 
 ENV PORT=8080
-ENV JAVA_OPTS="-Xms64m -Xmx320m -Dfile.encoding=UTF-8"
 EXPOSE 8080
 
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -Dserver.port=${PORT} -jar app.jar"]
+CMD ["sh", "-c", "sed -i \"s/port=\\\"8080\\\"/port=\\\"${PORT}\\\"/g\" /usr/local/tomcat/conf/server.xml && catalina.sh run"]
