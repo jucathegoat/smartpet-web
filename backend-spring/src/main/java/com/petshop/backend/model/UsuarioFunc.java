@@ -8,7 +8,7 @@ public class UsuarioFunc {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_funcionario")
+    @Column(name = "id_usuario")
     private Integer idFuncionario;
 
     @Column(name = "senha")
