@@ -37,8 +37,12 @@ public class SmartPetServlet extends HttpServlet {
             path = "/";
         try {
             if ("/health/db".equals(path)) {
-                query("SELECT 1");
-                json(resp, 200, Map.of("ok", true));
+                try {
+                    query("SELECT 1");
+                    json(resp, 200, Map.of("ok", true));
+                } catch (SQLException e) {
+                    json(resp, 503, Map.of("ok", false, "erro", String.valueOf(e.getMessage()), "sqlState", String.valueOf(e.getSQLState()), "code", e.getErrorCode()));
+                }
                 return;
             }
             if (path.startsWith("/css/")) {
