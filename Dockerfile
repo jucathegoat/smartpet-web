@@ -7,15 +7,12 @@ COPY src ./src
 RUN mvn -B -q package -DskipTests
 
 # ---- runtime ----
-FROM tomcat:11.0-jdk21-temurin
-# Remove os apps de exemplo do Tomcat
-RUN rm -rf /usr/local/tomcat/webapps/*
-COPY --from=build /build/target/smartpet.war /usr/local/tomcat/webapps/smartpet.war
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /build/target/*.jar app.jar
 
-# O Render injeta a porta em $PORT; o Tomcat precisa escutar nela.
-# Também fixa UTF-8 e limita a heap para caber nos 512 MB do plano gratuito.
-ENV CATALINA_OPTS="-Dfile.encoding=UTF-8 -Xms64m -Xmx320m"
-COPY docker-entrypoint-port.sh /usr/local/bin/docker-entrypoint-port.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint-port.sh
+ENV PORT=8080
+ENV JAVA_OPTS="-Xms64m -Xmx320m -Dfile.encoding=UTF-8"
 EXPOSE 8080
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-port.sh"]
+
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -Dserver.port=${PORT} -jar app.jar"]
