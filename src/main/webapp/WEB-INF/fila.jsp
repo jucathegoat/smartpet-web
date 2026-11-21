@@ -14,6 +14,7 @@
             <header class="navbar">
                 <div class="logo">🐾 SmartPet Admin</div>
                 <nav><a class="active" href="${pageContext.request.contextPath}/fila">Fila</a><a
+                        href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a><a
                         href="${pageContext.request.contextPath}/loja">Loja</a><a
                         href="${pageContext.request.contextPath}/pets">Pets</a><a
                         href="${pageContext.request.contextPath}/clientes">Clientes</a><a
@@ -59,7 +60,12 @@
                                     <c:out value="${item.horarioChegada}" />
                                 </td>
                                 <td>
-                                    <c:out value="${item.esperaMinutos}" /> min
+                                    <c:choose>
+                                        <c:when test="${empty item.esperaMinutos}">—</c:when>
+                                        <c:otherwise>
+                                            <c:out value="${item.esperaMinutos}" /> min
+                                        </c:otherwise>
+                                    </c:choose>
                                 </td>
                                 <td><span class="badge ${item.statusClass}">
                                         <c:out value="${item.status}" />

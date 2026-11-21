@@ -132,10 +132,32 @@ public class SmartPetServlet extends HttpServlet {
                 if (!admin(req, resp))
                     return;
                 req.setAttribute("fila", query(
-                        "SELECT f.id_atendimento AS id, f.criticidade AS servico, f.status, f.data_hora_entrada AS horarioChegada, p.nome AS nomePet, t.nome AS nomeCliente, (SELECT COUNT(*) FROM fila_atendimento anterior WHERE anterior.status='Em espera' AND anterior.id_atendimento<=f.id_atendimento) AS posicao, TIMESTAMPDIFF(MINUTE,f.data_hora_entrada,CURRENT_TIMESTAMP) AS esperaMinutos, CASE WHEN f.status='Em atendimento' THEN 'badge-atendimento' WHEN f.status='Concluído' THEN 'badge-ativo' ELSE 'badge-espera' END AS statusClass FROM fila_atendimento f LEFT JOIN pet p ON p.codigo_pet=f.id_petFK LEFT JOIN tutela tu ON tu.codigo_pet=p.codigo_pet LEFT JOIN tutor t ON t.cpf=tu.cpf ORDER BY f.data_hora_entrada"));
+                        "SELECT f.id_atendimento AS id, f.criticidade AS servico, f.status, f.data_hora_entrada AS horarioChegada, p.nome AS nomePet, t.nome AS nomeCliente, (SELECT COUNT(*) FROM fila_atendimento anterior WHERE anterior.status='Em espera' AND anterior.id_atendimento<=f.id_atendimento) AS posicao, CASE WHEN f.status IN ('Em espera','Em atendimento') THEN TIMESTAMPDIFF(MINUTE,f.data_hora_entrada,CURRENT_TIMESTAMP) ELSE NULL END AS esperaMinutos, CASE WHEN f.status='Em atendimento' THEN 'badge-atendimento' WHEN f.status='Concluído' THEN 'badge-ativo' ELSE 'badge-espera' END AS statusClass FROM fila_atendimento f LEFT JOIN pet p ON p.codigo_pet=f.id_petFK LEFT JOIN tutela tu ON tu.codigo_pet=p.codigo_pet LEFT JOIN tutor t ON t.cpf=tu.cpf ORDER BY f.data_hora_entrada"));
                 req.setAttribute("pets", query("SELECT codigo_pet AS id,nome FROM pet ORDER BY nome"));
                 req.setAttribute("servicos", query("SELECT codigo_servico AS id,nome FROM servico ORDER BY nome"));
                 req.getRequestDispatcher("/WEB-INF/fila.jsp").forward(req, resp);
+                return;
+            }
+            if ("/agendamentos".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                req.setAttribute("agendamentos", query(
+                        "SELECT a.id_agenda AS id, a.data_agendamento AS data, a.hora_agendamento AS hora, a.status, t.nome AS nomeCliente, t.cpf, p.nome AS nomePet, s.nome AS servico FROM agenda a LEFT JOIN tutor t ON t.cpf=a.cpf LEFT JOIN pet p ON p.codigo_pet=a.codigo_pet LEFT JOIN servico s ON s.codigo_servico=a.codigo_servico ORDER BY a.data_agendamento DESC, a.hora_agendamento DESC"));
+                req.getRequestDispatcher("/WEB-INF/agendamentos.jsp").forward(req, resp);
+                return;
+            }
+            if ("/admin/agendamentos/excluir".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                try (Connection c = MySql.connect();
+                        PreparedStatement ps = c.prepareStatement("DELETE FROM agenda WHERE id_agenda=?")) {
+                    ps.setInt(1, Integer.parseInt(req.getParameter("id")));
+                    ps.executeUpdate();
+                } catch (NumberFormatException e) {
+                    resp.sendError(400, "ID inválido.");
+                    return;
+                }
+                resp.sendRedirect(req.getContextPath() + "/agendamentos");
                 return;
             }
             json(resp, 404, Map.of("sucesso", false, "mensagem", "Rota não encontrada."));
@@ -518,10 +540,19 @@ public class SmartPetServlet extends HttpServlet {
                     json(resp, 404, Map.of("sucesso", false, "mensagem", "Tutor não encontrado para este CPF."));
                     return;
                 }
+                String raca = value(b, "raca"), porte = value(b, "porte"), documento = value(b, "n_documento");
+                BigDecimal peso = null;
+                String pesoTexto = value(b, "peso").replace(",", ".");
+                if (!pesoTexto.isBlank()) {
+                    try {
+                        peso = new BigDecimal(pesoTexto);
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
                 try (Connection c = MySql.connect()) {
                     c.setAutoCommit(false);
                     try (PreparedStatement p = c.prepareStatement(
-                            "INSERT INTO pet(nome,especie,idade,raca) VALUES(?,?,?,?)",
+                            "INSERT INTO pet(nome,especie,idade,raca,porte,peso,n_documento) VALUES(?,?,?,?,?,?,?)",
                             Statement.RETURN_GENERATED_KEYS)) {
                         p.setString(1, Validacao.truncar(nome, 100));
                         p.setString(2, Validacao.truncar(especie, 50));
@@ -529,7 +560,16 @@ public class SmartPetServlet extends HttpServlet {
                             p.setNull(3, java.sql.Types.INTEGER);
                         else
                             p.setInt(3, idade);
-                        p.setString(4, Validacao.truncar(especie, 50));
+                        p.setString(4, Validacao.truncar(raca, 50));
+                        p.setString(5, Validacao.truncar(porte, 50));
+                        if (peso == null)
+                            p.setNull(6, java.sql.Types.DECIMAL);
+                        else
+                            p.setBigDecimal(6, peso);
+                        if (documento.isBlank())
+                            p.setNull(7, java.sql.Types.VARCHAR);
+                        else
+                            p.setString(7, Validacao.truncar(documento, 20));
                         p.executeUpdate();
                         try (ResultSet k = p.getGeneratedKeys()) {
                             k.next();

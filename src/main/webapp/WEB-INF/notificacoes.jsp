@@ -27,7 +27,7 @@
 <body>
     <header class="navbar">
         <div class="logo">🐾 Smart Pet Admin</div>
-        <nav>
+        <nav><a href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a>
             <a href="/fila">Fila</a>
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
