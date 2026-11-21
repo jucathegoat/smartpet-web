@@ -36,6 +36,7 @@ public final class MySql {
     /** Do mais fraco para o mais forte: usado para nunca rebaixar um modo já configurado. */
     private static final List<String> SSL_MODES =
             List.of("DISABLED", "PREFERRED", "REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY");
+    private static final long STARTED_MS = System.currentTimeMillis();
 
     private MySql() { }
 
@@ -170,6 +171,24 @@ public final class MySql {
         return host.isEmpty() || "localhost".equals(host) || "127.0.0.1".equals(host) || "::1".equals(host);
     }
 
+    /** Impressão SHA-256 curta da senha (sem revelar o valor), só para diagnóstico. */
+    static String fingerprint(String password) {
+        if (password.isEmpty()) {
+            return "";
+        }
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 4; i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     /** Extrai "host:porta" da URL JDBC, sem usuário/senha, para diagnóstico. */
     static String hostOf(String url) {
         int scheme = url.indexOf("//");
@@ -301,8 +320,14 @@ public final class MySql {
 
         /** Nomes das variáveis usadas (sem valores), para diagnóstico. */
         Map<String, String> fontes() {
-            return Map.of("url", urlSource, "usuario", userSource,
-                    "senha", passwordSource, "host", hostOf(url));
+            return Map.of(
+                    "url", urlSource,
+                    "usuario", userSource,
+                    "senha", passwordSource,
+                    "host", hostOf(url),
+                    "senhaLen", String.valueOf(password.length()),
+                    "senhaHash", fingerprint(password),
+                    "uptimeS", String.valueOf((System.currentTimeMillis() - STARTED_MS) / 1000));
         }
 
         @Override
