@@ -141,7 +141,7 @@ public class SmartPetServlet extends HttpServlet {
             json(resp, 404, Map.of("sucesso", false, "mensagem", "Rota não encontrada."));
         } catch (SQLException e) {
             log("Falha na consulta ao MySQL", e);
-            json(resp, 503, Map.of("sucesso", false, "mensagem", "Falha ao consultar o MySQL."));
+            json(resp, 503, Map.of("sucesso", false, "mensagem", "Falha ao consultar o MySQL.", "detalhe", String.valueOf(e.getMessage()), "code", e.getErrorCode(), "sqlState", String.valueOf(e.getSQLState())));
         }
     }
 
