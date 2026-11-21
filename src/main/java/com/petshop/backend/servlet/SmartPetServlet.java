@@ -41,7 +41,7 @@ public class SmartPetServlet extends HttpServlet {
                     query("SELECT 1");
                     json(resp, 200, Map.of("ok", true));
                 } catch (SQLException e) {
-                    json(resp, 503, Map.of("ok", false, "erro", String.valueOf(e.getMessage()), "sqlState", String.valueOf(e.getSQLState()), "code", e.getErrorCode()));
+                    json(resp, 503, Map.of("ok", false, "erro", String.valueOf(e.getMessage()), "sqlState", String.valueOf(e.getSQLState()), "code", e.getErrorCode(), "fonte", MySql.config().fontes()));
                 }
                 return;
             }

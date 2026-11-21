@@ -54,24 +54,41 @@ public final class MySql {
         String url = env("SMARTPET_DB_URL");
         String user = env("SMARTPET_DB_USER");
         String password = env("SMARTPET_DB_PASSWORD");
+        String urlSource = url.isEmpty() ? "" : "SMARTPET_DB_URL";
+        String userSource = user.isEmpty() ? "" : "SMARTPET_DB_USER";
+        String passwordSource = password.isEmpty() ? "" : "SMARTPET_DB_PASSWORD";
 
         // Fallback: mesmas credenciais do .env, sob os nomes DB_*.
         if (url.isEmpty()) {
             url = buildUrl(env("DB_HOST"), env("DB_PORT"), env("DB_SCHEMA"));
+            if (!url.isEmpty()) {
+                urlSource = "DB_HOST";
+            }
         }
         if (url.isEmpty()) {
             url = LOCAL_URL;
+            urlSource = "padrao-localhost";
         }
         if (user.isEmpty()) {
             user = env("DB_USER");
+            if (!user.isEmpty()) {
+                userSource = "DB_USER";
+            }
         }
         if (user.isEmpty()) {
             user = DEFAULT_USER;
+            userSource = "padrao-root";
         }
         if (password.isEmpty()) {
             password = env("DB_PASS");
+            if (!password.isEmpty()) {
+                passwordSource = "DB_PASS";
+            }
         }
-        return new Config(normalize(url, env("DB_SSL")), user, password);
+        if (password.isEmpty()) {
+            passwordSource = "vazia";
+        }
+        return new Config(normalize(url, env("DB_SSL")), user, password, urlSource, userSource, passwordSource);
     }
 
     /** Aplica os parâmetros de TLS/timezone exigidos pelo banco remoto. */
@@ -240,18 +257,45 @@ public final class MySql {
         return mode == null ? -1 : SSL_MODES.indexOf(mode.toUpperCase(Locale.ROOT));
     }
 
-    /** Lê do ambiente do processo e remove espaços invisíveis. */
+    /**
+     * Lê do ambiente e remove o que o painel costuma colar junto: espaços,
+     * quebras de linha, BOM invisível e aspas em volta do valor.
+     */
     private static String env(String name) {
         String value = System.getenv(name);
-        return value == null ? "" : value.trim();
+        if (value == null) {
+            return "";
+        }
+        String v = value.trim();
+        if (!v.isEmpty() && v.charAt(0) == '\uFEFF') {
+            v = v.substring(1).trim();
+        }
+        while (v.length() >= 2) {
+            char first = v.charAt(0);
+            char last = v.charAt(v.length() - 1);
+            boolean quoted = (first == '"' && last == '"') || (first == '\'' && last == '\'');
+            if (!quoted) {
+                break;
+            }
+            v = v.substring(1, v.length() - 1).trim();
+        }
+        return v;
     }
 
     /** Credenciais resolvidas; a senha nunca aparece em log/toString. */
-    record Config(String url, String user, String password) {
+    record Config(String url, String user, String password,
+                  String urlSource, String userSource, String passwordSource) {
+
+        /** Nomes das variáveis usadas (sem valores), para diagnóstico. */
+        Map<String, String> fontes() {
+            return Map.of("url", urlSource, "usuario", userSource, "senha", passwordSource);
+        }
+
         @Override
         public String toString() {
-            return "Config[url=" + url + ", user=" + user
-                    + ", password=" + (password.isEmpty() ? "<vazia>" : "***") + "]";
+            return "Config[url=" + url + ", user=" + user + " (" + userSource + ")"
+                    + ", password=" + (password.isEmpty() ? "<vazia>" : "***")
+                    + " (" + passwordSource + ")]";
         }
     }
 }
