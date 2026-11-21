@@ -22,18 +22,7 @@
     </style>
 </head>
 <body>
-    <header class="navbar">
-        <div class="logo">🐾 Smart Pet Admin</div>
-        <nav>
-            <a href="/fila">Fila</a>
-            <a href="/pets">Pets</a>
-            <a href="/clientes">Clientes</a>
-            <a href="/loja">Loja</a>
-            <a href="/avaliacoes">Avaliações</a>
-            <a href="/notificacoes">Notificações</a>
-            <a href="/logout" style="color: #ffcdd2;">Sair</a>
-        </nav>
-    </header>
+    <%@ include file="menu.jspf" %>
     <main class="container">
         <div class="form-card">
             <h2>Cadastrar Novo Usuário / Cliente</h2>

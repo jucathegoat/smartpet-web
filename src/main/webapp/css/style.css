@@ -319,3 +319,10 @@ textarea:focus {
 .btn-sucesso:hover {
     background-color: #1b5e20;
 }
+
+.navbar nav .nav-sep {
+    color: #c5cae9;
+    opacity: 0.45;
+    font-weight: 400;
+    align-self: center;
+}

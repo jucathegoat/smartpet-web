@@ -25,18 +25,7 @@
     </style>
 </head>
 <body>
-    <header class="navbar">
-        <div class="logo">🐾 Smart Pet Admin</div>
-        <nav><a href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a><a href="${pageContext.request.contextPath}/balconista">Balcão</a><a href="${pageContext.request.contextPath}/veterinario">Veterinário</a>
-            <a href="/fila">Fila</a>
-            <a href="/pets">Pets</a>
-            <a href="/clientes">Clientes</a>
-            <a href="/loja">Loja</a>
-            <a href="/avaliacoes">Avaliações</a>
-            <a href="/notificacoes">Notificações</a>
-            <a href="/logout" style="color: #ffcdd2;">Sair</a>
-        </nav>
-    </header>
+    <%@ include file="menu.jspf" %>
     <main class="container">
         <h2>Disparo de Notificações para o App Mobile</h2>
         <p style="color: #666; margin-bottom: 1.5rem;">Envie comunicados, lembretes e promoções diretamente para os clientes.</p>

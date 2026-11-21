@@ -11,15 +11,7 @@
         </head>
 
         <body>
-            <header class="navbar">
-                <div class="logo">🐾 SmartPet Admin</div>
-                <nav><a href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a><a href="${pageContext.request.contextPath}/balconista">Balcão</a><a href="${pageContext.request.contextPath}/veterinario">Veterinário</a><a href="${pageContext.request.contextPath}/fila">Fila</a><a class="active"
-                        href="${pageContext.request.contextPath}/loja">Loja</a><a
-                        href="${pageContext.request.contextPath}/pets">Pets</a><a
-                        href="${pageContext.request.contextPath}/clientes">Clientes</a><a
-                        href="${pageContext.request.contextPath}/avaliacoes">Avaliações</a><a
-                        href="${pageContext.request.contextPath}/logout">Sair</a></nav>
-            </header>
+            <%@ include file="menu.jspf" %>
             <main class="container">
                 <h2>Loja e produtos</h2>
                 <p>Catálogo integrado ao aplicativo SmartPet. Cole um link direto da imagem para pré-visualizar o produto.</p>

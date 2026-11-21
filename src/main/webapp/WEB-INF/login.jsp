@@ -69,7 +69,7 @@
 </head>
 <body>
     <header class="navbar">
-        <div class="logo">🐾 Smart Pet Admin</div>
+        <div class="logo">🐾 SmartPet Admin</div>
     </header>
 
     <div class="login-wrapper">

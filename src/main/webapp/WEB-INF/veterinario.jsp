@@ -63,16 +63,7 @@
         </head>
 
         <body>
-            <header class="navbar">
-                <div class="logo">🐾 Smart Pet — Veterinário</div>
-                <nav>
-                    <a href="${pageContext.request.contextPath}/balconista">Balcão</a>
-                    <a class="active" href="${pageContext.request.contextPath}/veterinario">Veterinário</a>
-                    <a href="${pageContext.request.contextPath}/fila">Fila completa</a>
-                    <a href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a>
-                    <a href="${pageContext.request.contextPath}/logout" style="color:#ffcdd2;">Sair</a>
-                </nav>
-            </header>
+            <%@ include file="menu.jspf" %>
             <main class="container">
                 <span class="perfil">🩺 Perfil: Veterinário / Atendente</span>
                 <h2>Atendimentos</h2>

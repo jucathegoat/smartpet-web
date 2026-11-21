@@ -1,0 +1,26 @@
+<header class="navbar">
+    <div class="logo">🐾 SmartPet Admin</div>
+    <nav>
+        <a class="${pageContext.request.servletPath eq '/balconista' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/balconista">Balcão</a>
+        <a class="${pageContext.request.servletPath eq '/veterinario' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/veterinario">Veterinário</a>
+        <a class="${pageContext.request.servletPath eq '/fila' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/fila">Fila</a>
+        <a class="${pageContext.request.servletPath eq '/agendamentos' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a>
+        <span class="nav-sep">|</span>
+        <a class="${pageContext.request.servletPath eq '/clientes' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/clientes">Clientes</a>
+        <a class="${pageContext.request.servletPath eq '/pets' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/pets">Pets</a>
+        <a class="${pageContext.request.servletPath eq '/loja' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/loja">Loja</a>
+        <a class="${pageContext.request.servletPath eq '/avaliacoes' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/avaliacoes">Avaliações</a>
+        <a class="${pageContext.request.servletPath eq '/notificacoes' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/notificacoes">Notificações</a>
+        <span class="nav-sep">|</span>
+        <a href="${pageContext.request.contextPath}/logout">Sair</a>
+    </nav>
+</header>

@@ -11,15 +11,7 @@
         </head>
 
         <body>
-            <header class="navbar">
-                <div class="logo">🐾 SmartPet Admin</div>
-                <nav><a href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a><a href="${pageContext.request.contextPath}/balconista">Balcão</a><a href="${pageContext.request.contextPath}/veterinario">Veterinário</a><a href="${pageContext.request.contextPath}/fila">Fila</a><a
-                        href="${pageContext.request.contextPath}/loja">Loja</a><a
-                        href="${pageContext.request.contextPath}/pets">Pets</a><a
-                        href="${pageContext.request.contextPath}/clientes">Clientes</a><a class="active"
-                        href="${pageContext.request.contextPath}/avaliacoes">Avaliações</a><a
-                        href="${pageContext.request.contextPath}/logout">Sair</a></nav>
-            </header>
+            <%@ include file="menu.jspf" %>
             <main class="container">
                 <h2>Avaliações dos clientes</h2>
                 <form action="${pageContext.request.contextPath}/admin/avaliacoes/salvar" method="post" class="card" style="padding:18px;margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap"><input type="number" name="id" placeholder="ID para editar (vazio = nova)" min="1"><input type="number" name="atendimento" placeholder="Atendimento opcional" min="1"><select name="nota"><option value="3">3 · Excelente</option><option value="2">2 · Bom</option><option value="1">1 · Ruim</option></select><input name="comentario" maxlength="255" placeholder="Comentário" required style="flex:1;min-width:220px"><button class="btn btn-sucesso">Salvar avaliação</button></form>

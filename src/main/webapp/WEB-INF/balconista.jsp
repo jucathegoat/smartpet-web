@@ -50,17 +50,7 @@
         </head>
 
         <body>
-            <header class="navbar">
-                <div class="logo">🐾 Smart Pet — Balcão</div>
-                <nav>
-                    <a class="active" href="${pageContext.request.contextPath}/balconista">Balcão</a>
-                    <a href="${pageContext.request.contextPath}/veterinario">Veterinário</a>
-                    <a href="${pageContext.request.contextPath}/fila">Fila completa</a>
-                    <a href="${pageContext.request.contextPath}/agendamentos">Agendamentos</a>
-                    <a href="${pageContext.request.contextPath}/clientes">Clientes</a>
-                    <a href="${pageContext.request.contextPath}/logout" style="color:#ffcdd2;">Sair</a>
-                </nav>
-            </header>
+            <%@ include file="menu.jspf" %>
             <main class="container">
                 <span class="perfil">👤 Perfil: Balconista / Atendente</span>
                 <h2>Recepção e Fila de Espera</h2>
