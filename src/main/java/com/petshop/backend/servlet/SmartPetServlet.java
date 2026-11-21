@@ -35,6 +35,7 @@ public class SmartPetServlet extends HttpServlet {
             path = req.getServletPath();
         if (path == null || path.isEmpty())
             path = "/";
+        req.setAttribute("menuAtivo", path);
         try {
             if ("/health/db".equals(path)) {
                 try {
