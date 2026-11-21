@@ -3,25 +3,255 @@ package com.petshop.backend.servlet;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
-/** Abre conexões JDBC usando somente configuração externa ao código. */
+/**
+ * Abre conexões JDBC usando somente configuração externa ao código.
+ *
+ * <p>Ordem de leitura do ambiente, sempre com {@code trim()} para descartar
+ * espaços/quebras de linha invisíveis que o painel do Render costuma colar no
+ * valor da variável:</p>
+ * <ol>
+ *   <li>{@code SMARTPET_DB_URL}, {@code SMARTPET_DB_USER} e
+ *       {@code SMARTPET_DB_PASSWORD};</li>
+ *   <li>para o que faltar: {@code DB_HOST}, {@code DB_PORT}, {@code DB_SCHEMA},
+ *       {@code DB_SSL}, {@code DB_USER} e {@code DB_PASS}.</li>
+ * </ol>
+ *
+ * <p>Fora de {@code localhost} a URL final recebe obrigatoriamente
+ * {@code sslMode=REQUIRED}, {@code allowPublicKeyRetrieval=true} e
+ * {@code serverTimezone=UTC} — o mínimo exigido pelo Aiven MySQL. Um modo SSL
+ * mais forte já presente na URL é preservado, nunca rebaixado.</p>
+ */
 public final class MySql {
-    private MySql() {}
+    private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
+    private static final String JDBC_PREFIX = "jdbc:mysql://";
+    private static final String LOCAL_URL = "jdbc:mysql://localhost:3306/smartpet?serverTimezone=UTC";
+    private static final String DEFAULT_USER = "root";
+    private static final String DEFAULT_PORT = "3306";
+    private static final String DEFAULT_SCHEMA = "smartpet";
+    /** Do mais fraco para o mais forte: usado para nunca rebaixar um modo já configurado. */
+    private static final List<String> SSL_MODES =
+            List.of("DISABLED", "PREFERRED", "REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY");
+
+    private MySql() { }
 
     public static Connection connect() throws SQLException {
-        String url = setting("SMARTPET_DB_URL", "jdbc:mysql://localhost:3306/smartpet?serverTimezone=UTC");
-        String user = setting("SMARTPET_DB_USER", "root");
-        String password = setting("SMARTPET_DB_PASSWORD", "");
+        Config config = config();
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
+            Class.forName(DRIVER);
         } catch (ClassNotFoundException e) {
             throw new SQLException("MySQL JDBC driver is missing from the application.", e);
         }
-        return DriverManager.getConnection(url, user, password);
+        return DriverManager.getConnection(config.url(), config.user(), config.password());
     }
 
-    private static String setting(String name, String fallback) {
+    /** Configuração efetiva; separada para permitir teste sem abrir conexão. */
+    static Config config() {
+        String url = env("SMARTPET_DB_URL");
+        String user = env("SMARTPET_DB_USER");
+        String password = env("SMARTPET_DB_PASSWORD");
+
+        // Fallback: mesmas credenciais do .env, sob os nomes DB_*.
+        if (url.isEmpty()) {
+            url = buildUrl(env("DB_HOST"), env("DB_PORT"), env("DB_SCHEMA"));
+        }
+        if (url.isEmpty()) {
+            url = LOCAL_URL;
+        }
+        if (user.isEmpty()) {
+            user = env("DB_USER");
+        }
+        if (user.isEmpty()) {
+            user = DEFAULT_USER;
+        }
+        if (password.isEmpty()) {
+            password = env("DB_PASS");
+        }
+        return new Config(normalize(url, env("DB_SSL")), user, password);
+    }
+
+    /** Aplica os parâmetros de TLS/timezone exigidos pelo banco remoto. */
+    private static String normalize(String url, String dbSsl) {
+        String value = url.trim();
+        if (value.regionMatches(true, 0, "mysql://", 0, "mysql://".length())) {
+            value = "jdbc:" + value; // alguém colou a URL sem o prefixo jdbc:
+        }
+        if (value.isEmpty()) {
+            value = LOCAL_URL;
+        }
+        if (!value.regionMatches(true, 0, JDBC_PREFIX, 0, JDBC_PREFIX.length())) {
+            return value; // formato inesperado: devolve como veio
+        }
+
+        int queryStart = value.indexOf('?');
+        String base = queryStart < 0 ? value : value.substring(0, queryStart);
+        String query = queryStart < 0 ? "" : value.substring(queryStart + 1);
+
+        Map<String, String> params = parseParams(query);
+        boolean local = isLocalHost(base.substring(JDBC_PREFIX.length()));
+        String sslMode = stronger(normalizeSsl(dbSsl), get(params, "sslMode"));
+
+        if (local) {
+            if (sslMode != null) {
+                set(params, "sslMode", sslMode);
+            }
+            putIfAbsent(params, "allowPublicKeyRetrieval", "true");
+            putIfAbsent(params, "serverTimezone", "UTC");
+        } else {
+            set(params, "sslMode", atLeastRequired(sslMode));
+            set(params, "allowPublicKeyRetrieval", "true");
+            set(params, "serverTimezone", "UTC");
+        }
+        return base + '?' + joinParams(params);
+    }
+
+    /** Monta a URL a partir das variáveis DB_*. Devolve "" se faltar o host. */
+    private static String buildUrl(String host, String port, String schema) {
+        String h = host;
+        if (h.isEmpty()) {
+            return "";
+        }
+        boolean hostHasPort = h.startsWith("[") ? h.contains("]:") : h.contains(":");
+        if (!hostHasPort) {
+            h = h + ':' + (port.isEmpty() ? DEFAULT_PORT : port);
+        }
+        String db = schema;
+        while (db.startsWith("/")) {
+            db = db.substring(1);
+        }
+        if (db.isEmpty()) {
+            db = DEFAULT_SCHEMA;
+        }
+        return JDBC_PREFIX + h + '/' + db;
+    }
+
+    /** true para localhost/IP local; o host vem em "host:porta/base". */
+    private static boolean isLocalHost(String hostAndPath) {
+        int slash = hostAndPath.indexOf('/');
+        String hostAndPort = slash < 0 ? hostAndPath : hostAndPath.substring(0, slash);
+        int at = hostAndPort.lastIndexOf('@');
+        if (at >= 0) {
+            hostAndPort = hostAndPort.substring(at + 1);
+        }
+        String host = hostAndPort;
+        if (host.startsWith("[")) {
+            int end = host.indexOf(']');
+            if (end > 0) {
+                host = host.substring(1, end);
+            }
+        } else {
+            int colon = host.indexOf(':');
+            if (colon >= 0) {
+                host = host.substring(0, colon);
+            }
+        }
+        host = host.toLowerCase(Locale.ROOT);
+        return host.isEmpty() || "localhost".equals(host) || "127.0.0.1".equals(host) || "::1".equals(host);
+    }
+
+    private static Map<String, String> parseParams(String query) {
+        Map<String, String> params = new LinkedHashMap<>();
+        if (query.isEmpty()) {
+            return params;
+        }
+        for (String pair : query.split("&")) {
+            if (pair.isEmpty()) {
+                continue;
+            }
+            int eq = pair.indexOf('=');
+            String key = (eq < 0 ? pair : pair.substring(0, eq)).trim();
+            String val = eq < 0 ? "" : pair.substring(eq + 1).trim();
+            if (!key.isEmpty()) {
+                set(params, key, val);
+            }
+        }
+        return params;
+    }
+
+    private static String joinParams(Map<String, String> params) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> e : params.entrySet()) {
+            if (sb.length() > 0) {
+                sb.append('&');
+            }
+            sb.append(e.getKey()).append('=').append(e.getValue());
+        }
+        return sb.toString();
+    }
+
+    /** Lê e remove qualquer variante de caixa da chave, gravando a forma canônica. */
+    private static void set(Map<String, String> params, String key, String value) {
+        params.keySet().removeIf(k -> k.equalsIgnoreCase(key));
+        params.put(key, value);
+    }
+
+    private static void putIfAbsent(Map<String, String> params, String key, String value) {
+        if (get(params, key) == null) {
+            set(params, key, value);
+        }
+    }
+
+    private static String get(Map<String, String> params, String key) {
+        for (Map.Entry<String, String> e : params.entrySet()) {
+            if (e.getKey().equalsIgnoreCase(key)) {
+                return e.getValue();
+            }
+        }
+        return null;
+    }
+
+    /** Aceita "REQUIRED", "true"/"false", etc. Devolve null quando não reconhece. */
+    private static String normalizeSsl(String raw) {
+        String v = raw.trim().toUpperCase(Locale.ROOT);
+        if (v.isEmpty()) {
+            return null;
+        }
+        switch (v) {
+            case "TRUE": case "1": case "YES": case "ON":
+                return "REQUIRED";
+            case "FALSE": case "0": case "NO": case "OFF":
+                return "DISABLED";
+            default:
+                return SSL_MODES.contains(v) ? v : null;
+        }
+    }
+
+    private static String atLeastRequired(String mode) {
+        return index(mode) < index("REQUIRED") ? "REQUIRED" : mode;
+    }
+
+    private static String stronger(String a, String b) {
+        int ia = index(a);
+        int ib = index(b);
+        if (ia < 0) {
+            return ib < 0 ? null : b;
+        }
+        if (ib < 0) {
+            return a;
+        }
+        return ia >= ib ? a : b;
+    }
+
+    private static int index(String mode) {
+        return mode == null ? -1 : SSL_MODES.indexOf(mode.toUpperCase(Locale.ROOT));
+    }
+
+    /** Lê do ambiente do processo e remove espaços invisíveis. */
+    private static String env(String name) {
         String value = System.getenv(name);
-        return value == null ? fallback : value;
+        return value == null ? "" : value.trim();
+    }
+
+    /** Credenciais resolvidas; a senha nunca aparece em log/toString. */
+    record Config(String url, String user, String password) {
+        @Override
+        public String toString() {
+            return "Config[url=" + url + ", user=" + user
+                    + ", password=" + (password.isEmpty() ? "<vazia>" : "***") + "]";
+        }
     }
 }
