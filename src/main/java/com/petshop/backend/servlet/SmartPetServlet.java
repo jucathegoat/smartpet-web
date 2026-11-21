@@ -172,6 +172,24 @@ public class SmartPetServlet extends HttpServlet {
                 req.getRequestDispatcher("/WEB-INF/balconista.jsp").forward(req, resp);
                 return;
             }
+            if ("/caixa".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                List<Map<String, Object>> receitas = query(
+                        "SELECT id_receita AS id, categoria, descricao, valor, data_hora FROM receita ORDER BY data_hora DESC, id_receita DESC");
+                List<Map<String, Object>> despesas = query(
+                        "SELECT id_despesa AS id, categoria, descricao, valor, data_hora FROM despesa ORDER BY data_hora DESC, id_despesa DESC");
+                BigDecimal totalReceitas = somar(receitas);
+                BigDecimal totalDespesas = somar(despesas);
+                req.setAttribute("receitas", receitas);
+                req.setAttribute("despesas", despesas);
+                req.setAttribute("totalReceitas", totalReceitas);
+                req.setAttribute("totalDespesas", totalDespesas);
+                req.setAttribute("saldo", totalReceitas.subtract(totalDespesas));
+                flash(req);
+                req.getRequestDispatcher("/WEB-INF/caixa.jsp").forward(req, resp);
+                return;
+            }
             if ("/veterinario".equals(path)) {
                 if (!admin(req, resp))
                     return;
@@ -250,6 +268,41 @@ public class SmartPetServlet extends HttpServlet {
                     req.getSession().setAttribute("erro", "Não foi possível concluir a ação: " + e.getMessage());
                 }
                 resp.sendRedirect(req.getContextPath() + voltar(req));
+                return;
+            }
+            if ("/admin/caixa/movimento".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                String tipo = req.getParameter("tipo");
+                try (Connection c = MySql.connect();
+                        PreparedStatement ps = c.prepareStatement("despesa".equals(tipo)
+                                ? "INSERT INTO despesa(categoria,descricao,valor,data_hora) VALUES(?,?,?,CURRENT_TIMESTAMP)"
+                                : "INSERT INTO receita(categoria,descricao,valor,data_hora) VALUES(?,?,?,CURRENT_TIMESTAMP)")) {
+                    ps.setString(1, Validacao.truncar(req.getParameter("categoria"), 50));
+                    ps.setString(2, Validacao.truncar(req.getParameter("descricao"), 255));
+                    ps.setBigDecimal(3, new BigDecimal(req.getParameter("valor").replace(",", ".")));
+                    ps.executeUpdate();
+                    req.getSession().setAttribute("mensagem", "Lançamento registrado.");
+                } catch (Exception e) {
+                    req.getSession().setAttribute("erro", "Não foi possível lançar: " + e.getMessage());
+                }
+                resp.sendRedirect(req.getContextPath() + "/caixa");
+                return;
+            }
+            if ("/admin/caixa/excluir".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                try (Connection c = MySql.connect();
+                        PreparedStatement ps = c.prepareStatement("despesa".equals(req.getParameter("tipo"))
+                                ? "DELETE FROM despesa WHERE id_despesa=?"
+                                : "DELETE FROM receita WHERE id_receita=?")) {
+                    ps.setInt(1, Integer.parseInt(req.getParameter("id")));
+                    ps.executeUpdate();
+                    req.getSession().setAttribute("mensagem", "Lançamento removido.");
+                } catch (Exception e) {
+                    req.getSession().setAttribute("erro", "Não foi possível remover: " + e.getMessage());
+                }
+                resp.sendRedirect(req.getContextPath() + "/caixa");
                 return;
             }
             if ("/usuario".equals(path)) {
@@ -767,6 +820,20 @@ public class SmartPetServlet extends HttpServlet {
             }
         else
             json(resp, 404, Map.of("sucesso", false));
+    }
+
+    /** Soma a coluna valor (DECIMAL) das linhas de receita/despesa. */
+    private static BigDecimal somar(List<Map<String, Object>> linhas) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map<String, Object> linha : linhas) {
+            Object v = linha.get("valor");
+            if (v instanceof BigDecimal b) {
+                total = total.add(b);
+            } else if (v != null) {
+                total = total.add(new BigDecimal(String.valueOf(v)));
+            }
+        }
+        return total;
     }
 
     /** Fila com os campos que as telas de balcão e veterinário usam. */

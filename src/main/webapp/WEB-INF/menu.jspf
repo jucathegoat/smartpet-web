@@ -17,6 +17,8 @@
             href="${pageContext.request.contextPath}/pets">Pets</a>
         <a class="${menuAtivo eq '/loja' ? 'active' : ''}"
             href="${pageContext.request.contextPath}/loja">Loja</a>
+        <a class="${menuAtivo eq '/caixa' ? 'active' : ''}"
+            href="${pageContext.request.contextPath}/caixa">Caixa</a>
         <a class="${menuAtivo eq '/avaliacoes' ? 'active' : ''}"
             href="${pageContext.request.contextPath}/avaliacoes">Avaliações</a>
         <span class="nav-sep">|</span>
