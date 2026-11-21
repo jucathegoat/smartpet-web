@@ -170,6 +170,19 @@ public final class MySql {
         return host.isEmpty() || "localhost".equals(host) || "127.0.0.1".equals(host) || "::1".equals(host);
     }
 
+    /** Extrai "host:porta" da URL JDBC, sem usuário/senha, para diagnóstico. */
+    static String hostOf(String url) {
+        int scheme = url.indexOf("//");
+        if (scheme < 0) {
+            return "";
+        }
+        int start = scheme + 2;
+        int end = url.indexOf('/', start);
+        String hostAndPort = end < 0 ? url.substring(start) : url.substring(start, end);
+        int at = hostAndPort.lastIndexOf('@');
+        return at < 0 ? hostAndPort : hostAndPort.substring(at + 1);
+    }
+
     private static Map<String, String> parseParams(String query) {
         Map<String, String> params = new LinkedHashMap<>();
         if (query.isEmpty()) {
@@ -288,7 +301,8 @@ public final class MySql {
 
         /** Nomes das variáveis usadas (sem valores), para diagnóstico. */
         Map<String, String> fontes() {
-            return Map.of("url", urlSource, "usuario", userSource, "senha", passwordSource);
+            return Map.of("url", urlSource, "usuario", userSource,
+                    "senha", passwordSource, "host", hostOf(url));
         }
 
         @Override
