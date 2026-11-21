@@ -160,6 +160,25 @@ public class SmartPetServlet extends HttpServlet {
                 resp.sendRedirect(req.getContextPath() + "/agendamentos");
                 return;
             }
+            if ("/balconista".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                req.setAttribute("fila", filaCompleta());
+                req.setAttribute("pets", query("SELECT codigo_pet AS id, nome, especie FROM pet ORDER BY nome"));
+                req.setAttribute("servicos",
+                        query("SELECT codigo_servico AS id, nome, preco FROM servico ORDER BY nome"));
+                flash(req);
+                req.getRequestDispatcher("/WEB-INF/balconista.jsp").forward(req, resp);
+                return;
+            }
+            if ("/veterinario".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                req.setAttribute("fila", filaCompleta());
+                flash(req);
+                req.getRequestDispatcher("/WEB-INF/veterinario.jsp").forward(req, resp);
+                return;
+            }
             json(resp, 404, Map.of("sucesso", false, "mensagem", "Rota não encontrada."));
         } catch (SQLException e) {
             log("Falha na consulta ao MySQL", e);
@@ -176,6 +195,62 @@ public class SmartPetServlet extends HttpServlet {
         if (path == null || path.isEmpty())
             path = "/";
         try {
+            if ("/balconista/registrar".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                try (Connection c = MySql.connect();
+                        PreparedStatement ps = c.prepareStatement(
+                                "INSERT INTO fila_atendimento(criticidade,data_hora_entrada,status,id_servicoFK,id_petFK) SELECT s.nome,CURRENT_TIMESTAMP,'Em espera',s.codigo_servico,? FROM servico s WHERE s.codigo_servico=?")) {
+                    ps.setInt(1, Integer.parseInt(req.getParameter("idPet")));
+                    ps.setInt(2, Integer.parseInt(req.getParameter("idServico")));
+                    ps.executeUpdate();
+                    req.getSession().setAttribute("mensagem", "Pet adicionado à fila de espera.");
+                } catch (Exception e) {
+                    req.getSession().setAttribute("erro", "Não foi possível adicionar: " + e.getMessage());
+                }
+                resp.sendRedirect(req.getContextPath() + "/balconista");
+                return;
+            }
+            if ("/fila/acao".equals(path)) {
+                if (!admin(req, resp))
+                    return;
+                String acao = req.getParameter("acao");
+                String id = req.getParameter("id");
+                try {
+                    if ("chamar".equalsIgnoreCase(acao)) {
+                        try (Connection c = MySql.connect();
+                                PreparedStatement ps = c.prepareStatement(
+                                        "UPDATE fila_atendimento SET status='Em atendimento' WHERE status='Em espera' ORDER BY data_hora_entrada LIMIT 1")) {
+                            ps.executeUpdate();
+                        }
+                        req.getSession().setAttribute("mensagem", "Próximo pet chamado para atendimento.");
+                    } else if ("concluir".equalsIgnoreCase(acao) && id != null && !id.isBlank()) {
+                        try (Connection c = MySql.connect();
+                                PreparedStatement ps = c.prepareStatement(
+                                        "UPDATE fila_atendimento SET status='Concluído' WHERE id_atendimento=?")) {
+                            ps.setInt(1, Integer.parseInt(id));
+                            ps.executeUpdate();
+                        }
+                        req.getSession().setAttribute("mensagem", "Atendimento concluído.");
+                    } else if ("cancelar".equalsIgnoreCase(acao) && id != null && !id.isBlank()) {
+                        String motivo = req.getParameter("motivo");
+                        if (motivo == null || motivo.isBlank())
+                            motivo = "Cancelado pela administração";
+                        try (Connection c = MySql.connect();
+                                PreparedStatement ps = c.prepareStatement(
+                                        "UPDATE fila_atendimento SET status='Cancelado', metodo_cancelamento=? WHERE id_atendimento=?")) {
+                            ps.setString(1, Validacao.truncar(motivo, 50));
+                            ps.setInt(2, Integer.parseInt(id));
+                            ps.executeUpdate();
+                        }
+                        req.getSession().setAttribute("mensagem", "Atendimento cancelado.");
+                    }
+                } catch (Exception e) {
+                    req.getSession().setAttribute("erro", "Não foi possível concluir a ação: " + e.getMessage());
+                }
+                resp.sendRedirect(req.getContextPath() + voltar(req));
+                return;
+            }
             if ("/usuario".equals(path)) {
                 Map<String, Object> b = body(req);
                 String cpf = value(b, "cpf"), nome = value(b, "nome"), usuario = value(b, "usuario"),
@@ -691,6 +766,35 @@ public class SmartPetServlet extends HttpServlet {
             }
         else
             json(resp, 404, Map.of("sucesso", false));
+    }
+
+    /** Fila com os campos que as telas de balcão e veterinário usam. */
+    private static List<Map<String, Object>> filaCompleta() throws SQLException {
+        return query("SELECT f.id_atendimento AS id, COALESCE(s.nome, f.criticidade) AS servico, f.status, f.data_hora_entrada AS horarioChegada, f.metodo_cancelamento AS motivoCancelamento, p.nome AS nomePet, t.nome AS nomeCliente, CASE WHEN f.status IN ('Em espera','Em atendimento') THEN TIMESTAMPDIFF(MINUTE,f.data_hora_entrada,CURRENT_TIMESTAMP) ELSE NULL END AS minutosEspera, CASE WHEN f.status='Em atendimento' THEN 'badge-atendimento' WHEN f.status IN ('Concluído','Concluido','Finalizado') THEN 'badge-ativo' ELSE 'badge-espera' END AS statusClass FROM fila_atendimento f LEFT JOIN servico s ON s.codigo_servico=f.id_servicoFK LEFT JOIN pet p ON p.codigo_pet=f.id_petFK LEFT JOIN tutela tu ON tu.codigo_pet=p.codigo_pet LEFT JOIN tutor t ON t.cpf=tu.cpf ORDER BY f.data_hora_entrada");
+    }
+
+    /** Move mensagem/erro da sessão para o request (flash sem framework). */
+    private static void flash(HttpServletRequest req) {
+        HttpSession s = req.getSession(false);
+        if (s == null)
+            return;
+        for (String k : new String[] { "mensagem", "erro" }) {
+            Object v = s.getAttribute(k);
+            if (v != null) {
+                req.setAttribute(k, v);
+                s.removeAttribute(k);
+            }
+        }
+    }
+
+    /** Página para onde voltar depois de uma ação da fila. */
+    private static String voltar(HttpServletRequest req) {
+        String v = req.getParameter("voltar");
+        if ("balconista".equals(v))
+            return "/balconista";
+        if ("veterinario".equals(v))
+            return "/veterinario";
+        return "/fila";
     }
 
     private static List<Map<String, Object>> query(String sql, Object... args) throws SQLException {
