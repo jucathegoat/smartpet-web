@@ -149,6 +149,7 @@ public class AuthController {
         String endereco = body.get("endereco");
         String usuario = body.get("usuario");
         String senha = body.get("senha");
+        String statusConta = body.get("statusConta");
 
         if (cpf == null || cpf.trim().isEmpty() || usuario == null || usuario.trim().isEmpty()) {
             resp.put("sucesso", false);

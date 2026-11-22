@@ -41,11 +41,13 @@ public class Pet {
 
     public Pet() {}
 
-    public Pet(String nome, String raca, String especie, Integer idade, Cliente cliente) {
+    public Pet(String nome, String raca, String especie, String porte, Integer idade, BigDecimal peso, Cliente cliente) {
         this.nome = nome;
         this.raca = raca;
         this.especie = especie;
+        this.porte = porte;
         this.idade = idade;
+        this.peso = peso;
         this.cpfTutor = (cliente != null) ? cliente.getCpf() : null;
     }
 
