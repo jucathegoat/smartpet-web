@@ -52,6 +52,7 @@
                                 </td>
                                 <td>
                                     <c:choose>
+                                        <c:when test="${item.status eq 'Concluído' or item.status eq 'Concluido' or item.status eq 'Cancelado'}">—</c:when>
                                         <c:when test="${empty item.esperaMinutos}">—</c:when>
                                         <c:otherwise>
                                             <c:out value="${item.esperaMinutos}" /> min

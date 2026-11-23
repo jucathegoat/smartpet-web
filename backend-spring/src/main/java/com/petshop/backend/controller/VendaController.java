@@ -79,6 +79,13 @@ public class VendaController {
     public ResponseEntity<Map<String, Object>> registrarVendaApi(
             @RequestBody Map<String, Object> body) {
 
+        String cpf = body.get("cpf") == null ? "" : body.get("cpf").toString().replaceAll("[^0-9]", "");
+        if (cpf.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "sucesso", false,
+                    "mensagem", "Entre na sua conta antes de comprar."));
+        }
+
         Integer idProduto = body.get("id_produto") != null
                 ? Integer.valueOf(body.get("id_produto").toString()) : null;
         Integer quantidade = body.get("quantidade") != null
@@ -95,6 +102,7 @@ public class VendaController {
         if (resultado.sucesso && resultado.venda != null) {
             resp.put("id_venda", resultado.venda.getIdVenda());
             resp.put("total", resultado.venda.getSubtotal());
+
         }
         return ResponseEntity.ok(resp);
     }

@@ -12,6 +12,11 @@ import java.util.List;
 @Repository
 public interface TutelaRepository extends JpaRepository<Tutela, Tutela.TutelaId> {
 
-    @Query("SELECT t.id.codigoPet FROM Tutela t WHERE t.id.cpf = :cpf")
+    void deleteByCodigoPet(Integer codigoPet);
+
+    @Query("SELECT t.codigoPet FROM Tutela t WHERE t.cpf = :cpf")
     List<Integer> findCodigoPetByCpf(@Param("cpf") String cpf);
+
+    @Query("SELECT t.cpf FROM Tutela t WHERE t.codigoPet = :codigoPet")
+    List<String> findCpfByCodigoPet(@Param("codigoPet") Integer codigoPet);
 }

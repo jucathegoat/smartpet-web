@@ -34,21 +34,18 @@ public class Pet {
     @Column(name = "peso", precision = 5, scale = 2)
     private BigDecimal peso;
 
-    // Guardado como texto: alguns pets do banco apontam para tutores que nao existem,
-    // e um relacionamento @ManyToOne derrubaria a listagem inteira.
+    // Documento proprio do pet. O tutor e definido exclusivamente pela tabela tutela.
     @Column(name = "n_documento", length = 20)
-    private String cpfTutor;
+    private String nDocumento;
 
     public Pet() {}
 
-    public Pet(String nome, String raca, String especie, String porte, Integer idade, BigDecimal peso, Cliente cliente) {
+    public Pet(String nome, String raca, String especie, Integer idade, Cliente cliente) {
         this.nome = nome;
         this.raca = raca;
         this.especie = especie;
-        this.porte = porte;
         this.idade = idade;
-        this.peso = peso;
-        this.cpfTutor = (cliente != null) ? cliente.getCpf() : null;
+        this.nDocumento = null;
     }
 
     public Integer getId() { return id; }
@@ -75,6 +72,6 @@ public class Pet {
     public BigDecimal getPeso() { return peso; }
     public void setPeso(BigDecimal peso) { this.peso = peso; }
 
-    public String getCpfTutor() { return cpfTutor; }
-    public void setCpfTutor(String cpfTutor) { this.cpfTutor = cpfTutor; }
+    public String getNDocumento() { return nDocumento; }
+    public void setNDocumento(String nDocumento) { this.nDocumento = nDocumento; }
 }

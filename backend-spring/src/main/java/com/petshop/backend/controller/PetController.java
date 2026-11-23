@@ -1,7 +1,8 @@
 package com.petshop.backend.controller;
-import java.math.BigDecimal;
+
 import com.petshop.backend.model.Cliente;
 import com.petshop.backend.model.Pet;
+import com.petshop.backend.model.Tutela;
 import com.petshop.backend.model.Caixa;
 import com.petshop.backend.repository.CaixaRepository;
 import com.petshop.backend.repository.ClienteRepository;
@@ -15,9 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
-/**
- * Somente operacoes de PET: tela, salvar, excluir e as rotas do app Flutter.
- */
+/** Somente operacoes de PET: tela, salvar, excluir e as rotas do app Flutter. */
 @Controller
 @CrossOrigin(origins = "*")
 public class PetController {
@@ -28,9 +27,9 @@ public class PetController {
     private final com.petshop.backend.repository.TutelaRepository tutelaRepository;
 
     public PetController(PetRepository petRepository,
-            ClienteRepository clienteRepository,
-            CaixaRepository caixaRepository,
-            com.petshop.backend.repository.TutelaRepository tutelaRepository) {
+                         ClienteRepository clienteRepository,
+                         CaixaRepository caixaRepository,
+                         com.petshop.backend.repository.TutelaRepository tutelaRepository) {
         this.petRepository = petRepository;
         this.clienteRepository = clienteRepository;
         this.caixaRepository = caixaRepository;
@@ -49,12 +48,12 @@ public class PetController {
 
     @PostMapping("/admin/pets/salvar")
     public String salvarPetWeb(@RequestParam(value = "id", required = false) Integer id,
-            @RequestParam("nome") String nome,
-            @RequestParam("raca") String raca,
-            @RequestParam("especie") String especie,
-            @RequestParam(value = "idade", required = false, defaultValue = "1") Integer idade,
-            @RequestParam("cpfCliente") String cpfCliente,
-            HttpSession session) {
+                               @RequestParam("nome") String nome,
+                               @RequestParam("raca") String raca,
+                               @RequestParam("especie") String especie,
+                               @RequestParam(value = "idade", required = false, defaultValue = "1") Integer idade,
+                               @RequestParam("cpfCliente") String cpfCliente,
+                               HttpSession session) {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
@@ -66,8 +65,12 @@ public class PetController {
             pet.setRaca(raca);
             pet.setEspecie(especie);
             pet.setIdade(idade);
-            pet.setCpfTutor(cliente.getCpf());
-            petRepository.save(pet);
+            Pet salvo = petRepository.save(pet);
+            tutelaRepository.deleteByCodigoPet(salvo.getId());
+            Tutela vinculo = new Tutela();
+            vinculo.setCodigoPet(salvo.getId());
+            vinculo.setCpf(cliente.getCpf());
+            tutelaRepository.save(vinculo);
         }
         return "redirect:/pets";
     }
@@ -77,6 +80,7 @@ public class PetController {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
+        tutelaRepository.deleteByCodigoPet(id);
         petRepository.deleteById(id);
         return "redirect:/pets";
     }
@@ -88,41 +92,23 @@ public class PetController {
     @GetMapping("/tutor/{cpf}/pets")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> listarPetsDoTutor(@PathVariable("cpf") String cpf) {
-        // Alguns pets do banco foram gravados com o num_documento do tutor
-        // (que nao e o CPF). Buscamos pelos dois campos.
-        java.util.List<Pet> pets = new java.util.ArrayList<>(petRepository.findByCpfTutor(cpf));
-        Cliente tutor = clienteRepository.findById(cpf).orElse(null);
-        if (tutor != null) {
-            String doc = tutor.getNDocumento();
-            if (doc != null && !doc.isBlank() && !doc.equals(cpf)) {
-                pets.addAll(petRepository.findByCpfTutor(doc));
-            }
-        }
-        // O vinculo oficial pet <-> tutor esta na tabela `tutela`.
-        // Sem consulta-la, o pet nao aparece quando o n_documento guarda
-        // um codigo (ex: KBXN007) em vez do CPF do tutor.
-        try {
-            for (Integer idPet : tutelaRepository.findCodigoPetByCpf(cpf)) {
-                if (pets.stream().noneMatch(p -> idPet.equals(p.getId()))) {
-                    petRepository.findById(idPet).ifPresent(pets::add);
-                }
-            }
-        } catch (Exception e) {
-            // tabela tutela ausente em alguma instalacao: segue sem ela
+        // A propriedade do pet vem somente do vínculo oficial, nunca do documento do pet.
+        java.util.List<Pet> pets = new java.util.ArrayList<>();
+        for (Integer idPet : tutelaRepository.findCodigoPetByCpf(cpf)) {
+            petRepository.findById(idPet).ifPresent(pets::add);
         }
         List<Map<String, Object>> lista = new ArrayList<>();
         for (Pet p : pets) {
             Map<String, Object> item = new HashMap<>();
-
             item.put("id", p.getId());
             item.put("nome", p.getNome());
             item.put("especie", p.getEspecie());
-            item.put("porte", p.getPorte());
             item.put("raca", p.getRaca());
-            item.put("idade", p.getIdade() != null ? p.getIdade() : 1);
+            item.put("porte", p.getPorte());
             item.put("peso", p.getPeso());
-            item.put("n_documento", p.getCpfTutor());
-
+            item.put("n_documento", p.getNDocumento());
+            item.put("nDocumento", p.getNDocumento());
+            item.put("idade", p.getIdade() != null ? p.getIdade() : 1);
             lista.add(item);
         }
         Map<String, Object> resp = new HashMap<>();
@@ -138,8 +124,6 @@ public class PetController {
         String cpf = (String) body.get("cpf");
         String nome = (String) body.get("nome");
         String especie = (String) body.get("especie");
-        String porte = (String) body.get( "porte");
-        double peso = body.get("peso") != null ? Double.valueOf(body.get("peso").toString()) : 0.0;
         String raca = (String) body.getOrDefault("raca", "Sem raça definida");
         Integer idade = body.get("idade") != null ? Integer.valueOf(body.get("idade").toString()) : 1;
 
@@ -150,8 +134,19 @@ public class PetController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
         }
 
-        Pet pet = new Pet(nome, raca, especie, porte, idade, BigDecimal.valueOf(peso), optCliente.get());
-        petRepository.save(pet);
+        Pet pet = new Pet(nome, raca, especie, idade, optCliente.get());
+        pet.setNDocumento(body.get("n_documento") == null ? null : body.get("n_documento").toString());
+        Pet salvo = petRepository.save(pet);
+
+        // Garante inserção na tabela de vínculo tutela
+        try {
+            Tutela t = new Tutela();
+            t.setCodigoPet(salvo.getId());
+            t.setCpf(optCliente.get().getCpf());
+            tutelaRepository.save(t);
+        } catch (Exception e) {
+            // tutela já existente ou ignorada
+        }
 
         resp.put("sucesso", true);
         resp.put("mensagem", "Pet cadastrado com sucesso!");
@@ -193,17 +188,15 @@ public class PetController {
         if (body.get("peso") != null && !body.get("peso").toString().isBlank()) {
             try {
                 p.setPeso(new java.math.BigDecimal(body.get("peso").toString()));
-            } catch (NumberFormatException ignored) {
-            }
+            } catch (NumberFormatException ignored) { }
         }
         if (body.get("idade") != null && !body.get("idade").toString().isBlank()) {
             try {
                 p.setIdade(Integer.valueOf(body.get("idade").toString()));
-            } catch (NumberFormatException ignored) {
-            }
+            } catch (NumberFormatException ignored) { }
         }
         if (body.get("n_documento") != null && !body.get("n_documento").toString().isBlank()) {
-            p.setCpfTutor(body.get("n_documento").toString());
+            p.setNDocumento(body.get("n_documento").toString());
         }
 
         petRepository.save(p);
@@ -227,6 +220,7 @@ public class PetController {
             erro.put("mensagem", "Pet não encontrado");
             return ResponseEntity.status(404).body(erro);
         }
+        tutelaRepository.deleteByCodigoPet(id);
         petRepository.deleteById(id);
 
         Map<String, Object> resp = new HashMap<>();
@@ -246,8 +240,8 @@ public class PetController {
         item.put("porte", p.getPorte());
         item.put("peso", p.getPeso());
         item.put("idade", p.getIdade() != null ? p.getIdade() : 1);
-        item.put("n_documento", p.getCpfTutor());
-        item.put("cpf", p.getCpfTutor());
+        item.put("n_documento", p.getNDocumento());
+        item.put("nDocumento", p.getNDocumento());
         return item;
     }
 }

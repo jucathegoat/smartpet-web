@@ -39,15 +39,18 @@ public class FilaService {
     private final PetRepository petRepository;
     private final ClienteRepository clienteRepository;
     private final ServicoRepository servicoRepository;
+    private final com.petshop.backend.repository.TutelaRepository tutelaRepository;
 
     public FilaService(FilaAtendimentoRepository filaRepository,
                        PetRepository petRepository,
                        ClienteRepository clienteRepository,
-                       ServicoRepository servicoRepository) {
+                       ServicoRepository servicoRepository,
+                       com.petshop.backend.repository.TutelaRepository tutelaRepository) {
         this.filaRepository = filaRepository;
         this.petRepository = petRepository;
         this.clienteRepository = clienteRepository;
         this.servicoRepository = servicoRepository;
+        this.tutelaRepository = tutelaRepository;
     }
 
     // ===============================================================
@@ -73,6 +76,7 @@ public class FilaService {
                     nomeDoPet(f.getIdPet()),
                     nomeDoServico(f.getIdServico())
             );
+            item.setIdPet(f.getIdPet());
             item.setChegada(f.getDataHoraEntrada() != null
                     ? f.getDataHoraEntrada()
                     : LocalDateTime.now());
@@ -152,6 +156,19 @@ public class FilaService {
                 .orElse(null);
     }
 
+    /** Inicia o atendimento da senha escolhida explicitamente no painel. */
+    @Transactional
+    public boolean chamar(Integer id) {
+        return filaRepository.findById(id).map(f -> {
+            if (!EM_ESPERA.equalsIgnoreCase(f.getStatus())) {
+                return false;
+            }
+            f.setStatus(EM_ATENDIMENTO);
+            filaRepository.save(f);
+            return true;
+        }).orElse(false);
+    }
+
     /** Cancela um atendimento exigindo justificativa (RF05). */
     @Transactional
     public boolean cancelar(Integer id, String motivo) {
@@ -200,6 +217,7 @@ public class FilaService {
                 nomeDoPet(f.getIdPet()),
                 nomeDoServico(f.getIdServico())
         );
+        item.setIdPet(f.getIdPet());
         item.setChegada(f.getDataHoraEntrada() != null
                 ? f.getDataHoraEntrada()
                 : LocalDateTime.now());
@@ -217,13 +235,23 @@ public class FilaService {
     private String nomeDoTutor(Integer idPet) {
         if (idPet == null) return "Cliente não informado";
         Pet pet = petRepository.findById(idPet).orElse(null);
-        if (pet == null || pet.getCpfTutor() == null) {
-            return "Cliente não informado";
+        if (pet == null) return "Cliente não informado";
+
+        try {
+            List<String> cpfs = tutelaRepository.findCpfByCodigoPet(idPet);
+            if (cpfs != null && !cpfs.isEmpty()) {
+                for (String c : cpfs) {
+                    Cliente tutor = clienteRepository.findById(c).orElse(null);
+                    if (tutor != null && tutor.getNome() != null && !tutor.getNome().isBlank()) {
+                        return tutor.getNome();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // ignora
         }
-        Cliente tutor = clienteRepository.findById(pet.getCpfTutor()).orElse(null);
-        return tutor != null && tutor.getNome() != null
-                ? tutor.getNome()
-                : "Cliente não informado";
+
+        return "Cliente não informado";
     }
 
     private String nomeDoServico(Integer idServico) {

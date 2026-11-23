@@ -16,9 +16,18 @@ import java.util.*;
 public class AvaliacaoController {
 
     private final AvaliacaoRepository avaliacaoRepository;
+    private final com.petshop.backend.service.FilaService filaService;
+    private final com.petshop.backend.repository.PetRepository petRepository;
+    private final com.petshop.backend.repository.TutelaRepository tutelaRepository;
 
-    public AvaliacaoController(AvaliacaoRepository avaliacaoRepository) {
+    public AvaliacaoController(AvaliacaoRepository avaliacaoRepository,
+                               com.petshop.backend.service.FilaService filaService,
+                               com.petshop.backend.repository.PetRepository petRepository,
+                               com.petshop.backend.repository.TutelaRepository tutelaRepository) {
         this.avaliacaoRepository = avaliacaoRepository;
+        this.filaService = filaService;
+        this.petRepository = petRepository;
+        this.tutelaRepository = tutelaRepository;
     }
 
     // ==========================================================
@@ -49,16 +58,33 @@ public class AvaliacaoController {
 
     @GetMapping("/api/avaliacoes/pendentes")
     @ResponseBody
-    public ResponseEntity<List<Map<String, Object>>> listarPendentesApi() {
-        List<Avaliacao> pendentes = avaliacaoRepository.findByRespondidaFalse();
+    public ResponseEntity<List<Map<String, Object>>> listarPendentesApi(
+            @RequestParam(value = "cpf", required = false) String cpf) {
         List<Map<String, Object>> resp = new ArrayList<>();
-        for (Avaliacao a : pendentes) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", a.getServicoId() != null ? a.getServicoId() : a.getIdAval());
-            map.put("nome_pet", a.getNomePet() != null ? a.getNomePet() : "Pet");
-            map.put("descricao", a.getDescricao() != null ? a.getDescricao() : "Atendimento SmartPet");
-            resp.add(map);
+        Set<Integer> petsDoTutor = (cpf != null && !cpf.isBlank())
+                ? new HashSet<>(tutelaRepository.findCodigoPetByCpf(cpf))
+                : Collections.emptySet();
+
+        for (com.petshop.backend.model.ItemFilaDTO item : filaService.listarTodos()) {
+            if ("Concluído".equalsIgnoreCase(item.getStatus()) || "Concluido".equalsIgnoreCase(item.getStatus())) {
+                if (cpf != null && !cpf.isBlank()) {
+                    // só exibe se o tutor for o dono do pet
+                    if (item.getIdPet() == null || !petsDoTutor.contains(item.getIdPet())) continue;
+                }
+
+                boolean jaRespondida = avaliacaoRepository.findByServicoId(item.getId())
+                        .map(Avaliacao::getRespondida).orElse(false);
+                if (!jaRespondida) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", item.getId());
+                    map.put("nome_pet", item.getNomePet());
+                    map.put("pet_id", item.getIdPet());
+                    map.put("descricao", item.getServico());
+                    resp.add(map);
+                }
+            }
         }
+
         return ResponseEntity.ok(resp);
     }
 
@@ -90,8 +116,16 @@ public class AvaliacaoController {
         aval.setComentario(comentario);
         aval.setAvalData(LocalDateTime.now());
         aval.setRespondida(true);
-        if (aval.getNomePet() == null) aval.setNomePet("Pet");
-        if (aval.getDescricao() == null) aval.setDescricao("Atendimento");
+        if (body.get("nome_pet") != null) {
+            aval.setNomePet(body.get("nome_pet").toString());
+        } else if (aval.getNomePet() == null) {
+            aval.setNomePet("Pet");
+        }
+        if (body.get("descricao") != null) {
+            aval.setDescricao(body.get("descricao").toString());
+        } else if (aval.getDescricao() == null) {
+            aval.setDescricao("Atendimento");
+        }
 
         avaliacaoRepository.save(aval);
 

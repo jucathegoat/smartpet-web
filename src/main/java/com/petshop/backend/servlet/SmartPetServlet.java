@@ -598,9 +598,12 @@ public class SmartPetServlet extends HttpServlet {
                     json(resp, 400, Map.of("sucesso", false, "mensagem", "Informe CPF, pet e serviço."));
                     return;
                 }
-                List<Map<String, Object>> pets = query(
-                        "SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? AND p.nome=? LIMIT 1",
-                        cpf, nomePet);
+                Integer idPetInformado = Validacao.inteiroOuNull(value(b, "idPet"));
+                List<Map<String, Object>> pets = idPetInformado != null
+                        ? query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? AND p.codigo_pet=? LIMIT 1",
+                                cpf, idPetInformado)
+                        : query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? AND p.nome=? LIMIT 1",
+                                cpf, nomePet);
                 List<Map<String, Object>> servicos = query("SELECT codigo_servico FROM servico WHERE nome=? LIMIT 1",
                         nomeServico);
                 if (pets.isEmpty()) {

@@ -1,5 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -65,6 +65,7 @@
                             <c:if test="${item.status eq 'Em espera'}">
                                 <form action="/fila/acao" method="POST" style="display:inline;">
                                     <input type="hidden" name="acao" value="chamar">
+                                    <input type="hidden" name="id" value="${item.id}">
                                     <button type="submit" class="btn btn-sucesso btn-sm">Atender</button>
                                 </form>
                             </c:if>

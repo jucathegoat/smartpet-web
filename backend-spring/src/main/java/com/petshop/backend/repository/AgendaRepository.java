@@ -13,6 +13,23 @@ public interface AgendaRepository extends JpaRepository<Agenda, Integer> {
 
     @Query(value =
             "SELECT a.id_agenda AS id, " +
+            "a.data_agendamento AS data, " +
+            "a.hora_agendamento AS hora, " +
+            "c.nome AS nomeCliente, " +
+            "a.cpf AS cpf, " +
+            "p.nome AS nomePet, " +
+            "s.nome AS servico, " +
+            "a.status AS status " +
+            "FROM agenda a " +
+            "LEFT JOIN cliente c ON c.cpf = a.cpf " +
+            "LEFT JOIN pet p ON p.codigo_pet = a.codigo_pet " +
+            "LEFT JOIN servico s ON s.codigo_servico = a.codigo_servico " +
+            "ORDER BY a.data_agendamento DESC, a.hora_agendamento ASC",
+            nativeQuery = true)
+    List<Map<String, Object>> listarTodosAgendamentosPainel();
+
+    @Query(value =
+            "SELECT a.id_agenda AS id, " +
             "p.codigo_pet AS pet_id, " +
             "p.nome AS nomePet, " +
             "p.especie AS especie, " +

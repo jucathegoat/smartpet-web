@@ -65,6 +65,7 @@
                             <c:if test="${item.status eq 'Em espera'}">
                                 <form action="/fila/acao" method="POST" style="display:inline;">
                                     <input type="hidden" name="acao" value="chamar">
+                                    <input type="hidden" name="id" value="${item.id}">
                                     <button type="submit" class="btn btn-sucesso btn-sm">Atender</button>
                                 </form>
                             </c:if>

@@ -27,11 +27,14 @@ public class ClienteAdminController {
 
     private final ClienteRepository clienteRepository;
     private final com.petshop.backend.repository.PetRepository petRepository;
+    private final com.petshop.backend.repository.TutelaRepository tutelaRepository;
 
     public ClienteAdminController(ClienteRepository clienteRepository,
-                                  com.petshop.backend.repository.PetRepository petRepository) {
+                                  com.petshop.backend.repository.PetRepository petRepository,
+                                  com.petshop.backend.repository.TutelaRepository tutelaRepository) {
         this.clienteRepository = clienteRepository;
         this.petRepository = petRepository;
+        this.tutelaRepository = tutelaRepository;
     }
 
     // ==========================================================
@@ -183,8 +186,10 @@ public class ClienteAdminController {
         }
 
         // ArrayList exigido pelo RNF04
-        List<com.petshop.backend.model.Pet> pets =
-                new ArrayList<>(petRepository.findByCpfTutor(cpf));
+        List<com.petshop.backend.model.Pet> pets = new ArrayList<>();
+        for (Integer idPet : tutelaRepository.findCodigoPetByCpf(cpf)) {
+            petRepository.findById(idPet).ifPresent(pets::add);
+        }
 
         model.addAttribute("cliente", cliente);
         model.addAttribute("pets", pets);
@@ -250,7 +255,6 @@ public class ClienteAdminController {
         pet.setCor(cor);
         pet.setIdade(idade);
         pet.setPeso(peso);
-        pet.setCpfTutor(cpf);
 
         // A tabela pet.raca tem 50 caracteres. Como o banco nao possui coluna
         // propria para a cor (e nao podemos alterar o schema), a cor e gravada
@@ -261,7 +265,11 @@ public class ClienteAdminController {
         }
         pet.setRaca(racaFinal);
 
-        petRepository.save(pet);
+        com.petshop.backend.model.Pet salvo = petRepository.save(pet);
+        com.petshop.backend.model.Tutela vinculo = new com.petshop.backend.model.Tutela();
+        vinculo.setCodigoPet(salvo.getId());
+        vinculo.setCpf(cpf);
+        tutelaRepository.save(vinculo);
 
         redirect.addFlashAttribute("mensagem",
                 "Pet " + pet.getNome() + " salvo com sucesso.");
@@ -276,6 +284,7 @@ public class ClienteAdminController {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
+        tutelaRepository.deleteByCodigoPet(codigoPet);
         petRepository.deleteById(codigoPet);
         redirect.addFlashAttribute("mensagem", "Pet removido.");
         return "redirect:/admin/clientes/editar?cpf=" + cpf;

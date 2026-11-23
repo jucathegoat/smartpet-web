@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 
 public class ItemFilaDTO {
     private Integer id;
+    private Integer idPet;
     private String nomeCliente;
     private String nomePet;
     private String servico;
@@ -29,6 +30,9 @@ public class ItemFilaDTO {
     public Integer getId() {
         return id;
     }
+
+    public Integer getIdPet() { return idPet; }
+    public void setIdPet(Integer idPet) { this.idPet = idPet; }
 
     public void setId(Integer id) {
         this.id = id;

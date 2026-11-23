@@ -33,6 +33,7 @@ public class Avaliacao {
     @Column(name = "respondida")
     private Boolean respondida = false;
 
+
     public Avaliacao() {}
 
     public Avaliacao(Integer servicoId, String nomePet, String descricao, Integer nota, LocalDateTime avalData, String comentario, Boolean respondida) {
@@ -68,4 +69,5 @@ public class Avaliacao {
 
     public Boolean getRespondida() { return respondida; }
     public void setRespondida(Boolean respondida) { this.respondida = respondida; }
+
 }

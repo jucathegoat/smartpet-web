@@ -28,6 +28,11 @@
         <h2>Feedback & Avaliações dos Clientes</h2>
         <p style="color: #666; margin-bottom: 1.5rem;">Avaliações enviadas pelos clientes pelo aplicativo mobile após os atendimentos.</p>
 
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+            <button type="button" class="btn btn-sucesso" onclick="filtrarAvaliacoes(false, this)">Todas</button>
+            <button type="button" class="btn" onclick="filtrarAvaliacoes(true, this)">Comentários</button>
+        </div>
+
         <table class="tabela">
             <thead>
                 <tr>
@@ -42,7 +47,7 @@
             </thead>
             <tbody>
                 <c:forEach var="a" items="${avaliacoes}">
-                    <tr>
+                    <tr data-tem-comentario="${not empty a.comentario}">
                         <td><strong>#${a.idAval}</strong></td>
                         <td>🐾 ${a.nomePet}</td>
                         <td>${a.descricao}</td>
@@ -79,5 +84,16 @@
             </tbody>
         </table>
     </main>
+    <script>
+        function filtrarAvaliacoes(comComentario, botao) {
+            document.querySelectorAll('tbody tr[data-tem-comentario]').forEach(function (linha) {
+                linha.hidden = comComentario && linha.dataset.temComentario !== 'true';
+            });
+            botao.parentElement.querySelectorAll('button').forEach(function (item) {
+                item.classList.remove('btn-sucesso');
+            });
+            botao.classList.add('btn-sucesso');
+        }
+    </script>
 </body>
 </html>

@@ -18,15 +18,18 @@ public class FilaController {
     private final com.petshop.backend.repository.PetRepository petRepository;
     private final com.petshop.backend.repository.ClienteRepository clienteRepository;
     private final com.petshop.backend.repository.ServicoRepository servicoRepository;
+    private final com.petshop.backend.repository.TutelaRepository tutelaRepository;
 
     public FilaController(FilaService filaService,
                           com.petshop.backend.repository.PetRepository petRepository,
                           com.petshop.backend.repository.ClienteRepository clienteRepository,
-                          com.petshop.backend.repository.ServicoRepository servicoRepository) {
+                          com.petshop.backend.repository.ServicoRepository servicoRepository,
+                          com.petshop.backend.repository.TutelaRepository tutelaRepository) {
         this.filaService = filaService;
         this.petRepository = petRepository;
         this.clienteRepository = clienteRepository;
         this.servicoRepository = servicoRepository;
+        this.tutelaRepository = tutelaRepository;
     }
 
     // ==========================================================
@@ -130,7 +133,11 @@ public class FilaController {
             return "redirect:/login";
         }
         if ("chamar".equalsIgnoreCase(acao)) {
-            filaService.chamarProximo();
+            if (id != null) {
+                filaService.chamar(id);
+            } else {
+                filaService.chamarProximo();
+            }
         } else if ("cancelar".equalsIgnoreCase(acao) && id != null) {
             filaService.cancelar(id, motivo != null ? motivo : "Cancelado pela administração");
         } else if ("concluir".equalsIgnoreCase(acao) && id != null) {
@@ -149,27 +156,42 @@ public class FilaController {
         return ResponseEntity.ok(filaService.listarTodos());
     }
 
-    @PostMapping("/api/fila/adicionar")
+    @PostMapping(value = {"/api/fila/adicionar", "/api/agendamentos"})
     @ResponseBody
     public ResponseEntity<ItemFilaDTO> adicionarApi(
+            @RequestBody(required = false) java.util.Map<String, Object> body,
             @RequestParam(value = "cliente", required = false) String cliente,
             @RequestParam(value = "pet", required = false) String pet,
             @RequestParam(value = "servico", required = false) String servico,
-            @RequestBody(required = false) java.util.Map<String, String> body) {
+            @RequestParam(value = "idPet", required = false) Integer idPet,
+            @RequestParam(value = "idServico", required = false) Integer idServico) {
 
         if (body != null) {
-            if (cliente == null) cliente = body.get("cliente");
-            if (pet == null) pet = body.get("pet");
-            if (servico == null) servico = body.get("servico");
+            if (cliente == null && body.get("cliente") != null) cliente = body.get("cliente").toString();
+            if (cliente == null && body.get("cpf") != null) cliente = body.get("cpf").toString();
+            if (pet == null && body.get("pet") != null) pet = body.get("pet").toString();
+            if (servico == null && body.get("servico") != null) servico = body.get("servico").toString();
+            if (idPet == null && body.get("idPet") != null) idPet = Integer.valueOf(body.get("idPet").toString());
+            if (idServico == null && body.get("idServico") != null) idServico = Integer.valueOf(body.get("idServico").toString());
         }
 
-        if (cliente == null || cliente.trim().isEmpty()) cliente = "Cliente App";
-        if (pet == null || pet.trim().isEmpty()) pet = "Pet";
-        if (servico == null || servico.trim().isEmpty()) servico = "Atendimento Geral";
+        if (cliente == null || cliente.trim().isEmpty() || idPet == null || idServico == null) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        filaService.adicionarPorNome(pet, servico);
-        ItemFilaDTO item = new ItemFilaDTO(0, cliente, pet, servico);
-        return ResponseEntity.ok(item);
+        java.util.Set<Integer> petsDoCliente =
+                new java.util.HashSet<>(tutelaRepository.findCodigoPetByCpf(cliente.replaceAll("[^0-9]", "")));
+        if (!petsDoCliente.contains(idPet)) {
+            return ResponseEntity.status(404).build();
+        }
+
+        com.petshop.backend.model.FilaAtendimento salvo = filaService.adicionarPorId(idPet, idServico);
+        ItemFilaDTO item = new ItemFilaDTO(
+                salvo.getIdAtendimento(), cliente, pet, servico);
+        item.setIdPet(salvo.getIdPet());
+        item.setStatus(salvo.getStatus());
+        item.setChegada(salvo.getDataHoraEntrada());
+        return ResponseEntity.status(201).body(item);
     }
 
     @PostMapping("/api/fila/chamar-proximo")
@@ -184,41 +206,21 @@ public class FilaController {
     //  e /api/fila/{id}/cancelar)
     // ==========================================================
 
-    @GetMapping("/api/fila/cliente/{cpf}")
+    @GetMapping(value = {"/api/fila/cliente/{cpf}", "/api/agendamentos/cliente/{cpf}", "/agendamentos/{cpf}"})
     @ResponseBody
     public ResponseEntity<List<java.util.Map<String, Object>>> filaDoClienteApi(
             @PathVariable("cpf") String cpf) {
 
         List<ItemFilaDTO> todos = filaService.listarTodos();
 
-        // Pets do tutor: o app manda o CPF do tutor logado.
-        // Alguns pets foram gravados com o n_documento do tutor em vez do CPF,
-        // por isso buscamos pelos dois.
-        java.util.List<com.petshop.backend.model.Pet> pets =
-                new java.util.ArrayList<>(petRepository.findByCpfTutor(cpf));
-
-        com.petshop.backend.model.Cliente tutor =
-                clienteRepository.findById(cpf).orElse(null);
-        if (tutor != null) {
-            String doc = tutor.getNDocumento();
-            if (doc != null && !doc.isBlank() && !doc.equals(cpf)) {
-                pets.addAll(petRepository.findByCpfTutor(doc));
-            }
-        }
-
+        java.util.Set<Integer> idsPetsCliente =
+                new java.util.HashSet<>(tutelaRepository.findCodigoPetByCpf(cpf));
         // ArrayList exigido pelo RNF04
         java.util.List<java.util.Map<String, Object>> resposta = new java.util.ArrayList<>();
         int posicao = 0;
 
         for (ItemFilaDTO item : todos) {
-            boolean doCliente = false;
-            for (com.petshop.backend.model.Pet p : pets) {
-                if (p.getNome() != null && p.getNome().equalsIgnoreCase(item.getNomePet())) {
-                    doCliente = true;
-                    break;
-                }
-            }
-            if (!doCliente) {
+            if (item.getIdPet() == null || !idsPetsCliente.contains(item.getIdPet())) {
                 continue;
             }
             if ("Em espera".equalsIgnoreCase(item.getStatus())) {

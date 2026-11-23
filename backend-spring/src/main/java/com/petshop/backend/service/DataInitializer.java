@@ -43,8 +43,8 @@ public class DataInitializer implements CommandLineRunner {
             clienteRepository.save(c1);
             clienteRepository.save(c2);
 
-            Pet p1 = new Pet("Thor", "Golden Retriever", "Cachorro", "Grande", 4, new BigDecimal("30.50"), c1);
-            Pet p2 = new Pet("Garfield", "Persa", "Gato", "Pequeno", 2, new BigDecimal("5.20"), c2);
+            Pet p1 = new Pet("Thor", "Golden Retriever", "Cachorro", 4, c1);
+            Pet p2 = new Pet("Garfield", "Persa", "Gato", 2, c2);
             petRepository.save(p1);
             petRepository.save(p2);
         }

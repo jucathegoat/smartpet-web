@@ -7,7 +7,7 @@ import java.util.List;
 
 @Repository
 public interface PetRepository extends JpaRepository<Pet, Integer> {
-    List<Pet> findByCpfTutor(String cpf);
+    List<Pet> findByNDocumento(String nDocumento);
 
     /** Usado pelo formulario da fila, que informa o nome do pet. */
     List<Pet> findByNomeIgnoreCase(String nome);

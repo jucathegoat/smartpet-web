@@ -55,7 +55,7 @@
                             <th>Espécie</th>
                             <th>Raça</th>
                             <th>Idade</th>
-                            <th>Tutor / CPF</th>
+                            <th>Documento do pet</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -67,7 +67,7 @@
                                 <td>${p.especie}</td>
                                 <td>${p.raca}</td>
                                 <td>${p.idade} anos</td>
-                                <td>${p.cpfTutor} <br><small style="color:#777;">${p.porte}</small></td>
+                                <td>${p.nDocumento} <br><small style="color:#777;">${p.porte}</small></td>
                                 <td>
                                     <form action="/admin/pets/excluir" method="POST" style="display:inline;">
                                         <input type="hidden" name="id" value="${p.id}">

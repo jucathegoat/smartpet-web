@@ -1,16 +1,19 @@
 package com.petshop.backend.controller;
 
-import com.petshop.backend.repository.AgendaRepository;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import com.petshop.backend.model.Agenda;
+import com.petshop.backend.repository.AgendaRepository;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
-
 import java.util.List;
 import java.util.Map;
 
-@RestController
+@Controller
 @CrossOrigin(origins = "*")
 public class AgendamentoController {
 
@@ -20,7 +23,18 @@ public class AgendamentoController {
                 this.agendaRepository = agendaRepository;
         }
 
+        @GetMapping("/agendamentos")
+        public String painelAgendamentos(HttpSession session, Model model) {
+                if (session.getAttribute("adminLogado") == null) {
+                        return "redirect:/login";
+                }
+                model.addAttribute("menuAtivo", "/agendamentos");
+                model.addAttribute("agendamentos", agendaRepository.listarTodosAgendamentosPainel());
+                return "agendamentos";
+        }
+
         @GetMapping("/api/agendamentos/cliente/{cpf}")
+        @ResponseBody
         public ResponseEntity<List<Map<String, Object>>> listarAgendamentos(
                         @PathVariable String cpf) {
 
@@ -29,6 +43,7 @@ public class AgendamentoController {
         }
 
         @PostMapping("/api/agendamentos")
+        @ResponseBody
         public ResponseEntity<Map<String, Object>> criarAgendamento(
                         @RequestBody Map<String, Object> body) {
 
@@ -59,6 +74,7 @@ public class AgendamentoController {
         }
 
         @PutMapping("/api/agendamentos/{id}/cancelar")
+        @ResponseBody
         public ResponseEntity<Map<String, Object>> cancelarAgendamento(
                         @PathVariable Integer id) {
 
