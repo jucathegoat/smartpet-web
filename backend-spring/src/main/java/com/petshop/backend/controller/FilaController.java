@@ -180,7 +180,7 @@ public class FilaController {
         }
 
         java.util.Set<Integer> petsDoCliente =
-                new java.util.HashSet<>(tutelaRepository.findCodigoPetByCpf(cliente.replaceAll("[^0-9]", "")));
+                idsPetsDoTutor(cliente);
         if (!petsDoCliente.contains(idPet)) {
             return ResponseEntity.status(404).build();
         }
@@ -214,7 +214,7 @@ public class FilaController {
         List<ItemFilaDTO> todos = filaService.listarTodos();
 
         java.util.Set<Integer> idsPetsCliente =
-                new java.util.HashSet<>(tutelaRepository.findCodigoPetByCpf(cpf));
+                idsPetsDoTutor(cpf);
         // ArrayList exigido pelo RNF04
         java.util.List<java.util.Map<String, Object>> resposta = new java.util.ArrayList<>();
         int posicao = 0;
@@ -263,4 +263,19 @@ public class FilaController {
                 : "Não foi possível cancelar o atendimento.");
         return ResponseEntity.ok(resp);
     }
+    private java.util.Set<Integer> idsPetsDoTutor(String cpf) {
+        String cpfNormalizado = cpf != null ? cpf.replaceAll("[^0-9]", "") : "";
+        java.util.Set<Integer> ids = new java.util.HashSet<>();
+        if (cpfNormalizado.isEmpty()) return ids;
+
+        for (com.petshop.backend.model.Tutela vinculo : tutelaRepository.findAll()) {
+            String cpfVinculo = vinculo.getCpf() != null
+                    ? vinculo.getCpf().replaceAll("[^0-9]", "") : "";
+            if (cpfNormalizado.equals(cpfVinculo)) {
+                ids.add(vinculo.getCodigoPet());
+            }
+        }
+        return ids;
+    }
+
 }
