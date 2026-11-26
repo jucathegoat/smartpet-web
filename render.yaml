@@ -12,9 +12,11 @@ services:
         value: production
       - key: SMARTPET_DB_URL
         sync: false
-      - key: SMARTPET_DB_USER
+      - key: DB_USER
         sync: false
-      - key: SMARTPET_DB_PASSWORD
+      - key: DB_PASS
         sync: false
+      - key: DB_SSL
+        value: REQUIRED
       - key: JAVA_OPTS
         value: -Xms64m -Xmx320m -Dfile.encoding=UTF-8
