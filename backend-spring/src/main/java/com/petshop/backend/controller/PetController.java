@@ -112,7 +112,7 @@ public class PetController {
     public ResponseEntity<Map<String, Object>> listarPetsDoTutor(@PathVariable("cpf") String cpf) {
         // A propriedade do pet vem somente do vínculo oficial, nunca do documento do pet.
         java.util.List<Pet> pets = new java.util.ArrayList<>();
-        for (Integer idPet : tutelaRepository.findCodigoPetByCpf(cpf)) {
+        for (Integer idPet : codigoPetsDoTutor(cpf)) {
             petRepository.findById(idPet).ifPresent(pets::add);
         }
         List<Map<String, Object>> lista = new ArrayList<>();
@@ -262,4 +262,19 @@ public class PetController {
         item.put("nDocumento", p.getNDocumento());
         return item;
     }
+    private Set<Integer> codigoPetsDoTutor(String cpf) {
+        String cpfNormalizado = cpf != null ? cpf.replaceAll("[^0-9]", "") : "";
+        Set<Integer> ids = new HashSet<>();
+        if (cpfNormalizado.isEmpty()) return ids;
+
+        for (Tutela vinculo : tutelaRepository.findAll()) {
+            String cpfVinculo = vinculo.getCpf() != null
+                    ? vinculo.getCpf().replaceAll("[^0-9]", "") : "";
+            if (cpfNormalizado.equals(cpfVinculo)) {
+                ids.add(vinculo.getCodigoPet());
+            }
+        }
+        return ids;
+    }
+
 }
