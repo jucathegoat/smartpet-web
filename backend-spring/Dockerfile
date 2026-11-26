@@ -9,6 +9,7 @@ RUN mvn -B -q package -DskipTests
 # ---- runtime ----
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+ENV SPRING_PROFILES_ACTIVE=production
 COPY --from=build /build/target/backend-0.0.1-SNAPSHOT.jar app.jar
 
 # O Render injeta a porta em $PORT
