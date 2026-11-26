@@ -1,17 +1,20 @@
 package com.petshop.backend.controller;
 
-import com.petshop.backend.model.Agenda;
-import com.petshop.backend.repository.AgendaRepository;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import com.petshop.backend.repository.AgendaRepository;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.petshop.backend.model.Agenda;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.stereotype.Controller;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 @CrossOrigin(origins = "*")
@@ -96,4 +99,14 @@ public class AgendamentoController {
                                                 "sucesso", true,
                                                 "mensagem", "Agendamento cancelado com sucesso"));
         }
+
+@GetMapping("/agendamentos")
+public String listarAgendamentos(Model model) {
+
+    model.addAttribute(
+        "agendamentos",
+        agendaRepository.listarTodosAgendamentos());
+
+    return "agendamentos";
+}
 }

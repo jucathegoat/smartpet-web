@@ -22,6 +22,7 @@
             <a href="/balconista">Balcão</a>
             <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila completa</a>
+            <a href="/agendamentos">Agendamentos</a>
             <a href="/clientes">Clientes</a>
             <a href="/logout" style="color:#ffcdd2;">Sair</a>
         </nav>
@@ -118,7 +119,7 @@
                                     </form>
                                 </c:if>
                                 <button type="button" class="btn btn-cancelar btn-sm"
-                                        onclick="abrirAcoes(${item.id}, '${item.nomePet}', '${item.status}')">Ações</button>
+                                        onclick="abrirAcoes('${item.id}', '${item.nomePet}', '${item.status}')">Ações</button>
                             </td>
                         </tr>
                     </c:forEach>
