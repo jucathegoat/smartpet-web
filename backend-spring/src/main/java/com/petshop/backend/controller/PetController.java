@@ -41,8 +41,26 @@ public class PetController {
         if (session.getAttribute("adminLogado") == null) {
             return "redirect:/login";
         }
-        model.addAttribute("pets", petRepository.findAll());
-        model.addAttribute("clientes", clienteRepository.findAll());
+        List<Pet> pets = petRepository.findAll();
+        List<Cliente> clientes = clienteRepository.findAll();
+        Map<String, String> nomesPorCpf = new HashMap<>();
+        for (Cliente cliente : clientes) {
+            if (cliente.getCpf() != null) {
+                nomesPorCpf.put(cliente.getCpf(), cliente.getNome());
+            }
+        }
+
+        Map<Integer, List<String>> tutoresPorPet = new HashMap<>();
+        for (Tutela vinculo : tutelaRepository.findAll()) {
+            String nomeTutor = nomesPorCpf.getOrDefault(
+                    vinculo.getCpf(), "Tutor não encontrado (" + vinculo.getCpf() + ")");
+            tutoresPorPet.computeIfAbsent(vinculo.getCodigoPet(), chave -> new ArrayList<>())
+                    .add(nomeTutor);
+        }
+
+        model.addAttribute("pets", pets);
+        model.addAttribute("clientes", clientes);
+        model.addAttribute("tutoresPorPet", tutoresPorPet);
         return "pets";
     }
 
