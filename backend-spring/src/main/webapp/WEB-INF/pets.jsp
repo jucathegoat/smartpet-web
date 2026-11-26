@@ -53,6 +53,7 @@
                         <tr>
                             <th>#ID</th>
                             <th>Nome do Pet</th>
+                            <th>Tutor(es)</th>
                             <th>Espécie</th>
                             <th>Raça</th>
                             <th>Idade</th>
@@ -65,6 +66,16 @@
                             <tr>
                                 <td><strong>#${p.id}</strong></td>
                                 <td>🐾 ${p.nome}</td>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${not empty tutoresPorPet[p.id]}">
+                                            <c:forEach var="nomeTutor" items="${tutoresPorPet[p.id]}" varStatus="status">
+                                                ${nomeTutor}<c:if test="${!status.last}"><br></c:if>
+                                            </c:forEach>
+                                        </c:when>
+                                        <c:otherwise><span style="color:#b45309;">Sem vínculo de tutela</span></c:otherwise>
+                                    </c:choose>
+                                </td>
                                 <td>${p.especie}</td>
                                 <td>${p.raca}</td>
                                 <td>${p.idade} anos</td>
@@ -79,7 +90,7 @@
                         </c:forEach>
                         <c:if test="${empty pets}">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: #888; padding: 2rem;">Nenhum pet cadastrado.</td>
+                                <td colspan="8" style="text-align: center; color: #888; padding: 2rem;">Nenhum pet cadastrado.</td>
                             </tr>
                         </c:if>
                     </tbody>
