@@ -60,7 +60,7 @@
                         <td>${item.nomePet}</td>
                         <td>${item.servico}</td>
                         <td>${item.horarioChegada}</td>
-                        <td>${item.minutosEspera} min</td>
+                        <td><c:choose><c:when test="${item.status eq 'Concluído' or item.status eq 'Concluido' or item.status eq 'Cancelado'}">—</c:when><c:otherwise>${item.minutosEspera} min</c:otherwise></c:choose></td>
                         <td><span class="badge ${item.statusClass}">${item.status}</span></td>
                         <td>
                             <c:if test="${item.status eq 'Em espera'}">
