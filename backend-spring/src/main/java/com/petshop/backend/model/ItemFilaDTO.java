@@ -75,7 +75,12 @@ public class ItemFilaDTO {
     }
 
     public long getMinutosEspera() {
-        if (chegada == null) return 0;
+        if (chegada == null
+                || "Concluído".equalsIgnoreCase(status)
+                || "Concluido".equalsIgnoreCase(status)
+                || "Cancelado".equalsIgnoreCase(status)) {
+            return 0;
+        }
         return Duration.between(chegada, LocalDateTime.now()).toMinutes();
     }
 
