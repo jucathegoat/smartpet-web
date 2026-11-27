@@ -156,7 +156,7 @@ public class FilaController {
         return ResponseEntity.ok(filaService.listarTodos());
     }
 
-    @PostMapping(value = {"/api/fila/adicionar", "/api/agendamentos"})
+    @PostMapping("/api/fila/adicionar")
     @ResponseBody
     public ResponseEntity<ItemFilaDTO> adicionarApi(
             @RequestBody(required = false) java.util.Map<String, Object> body,
@@ -206,7 +206,7 @@ public class FilaController {
     //  e /api/fila/{id}/cancelar)
     // ==========================================================
 
-    @GetMapping(value = {"/api/fila/cliente/{cpf}", "/api/agendamentos/cliente/{cpf}", "/agendamentos/{cpf}"})
+    @GetMapping(value = {"/api/fila/cliente/{cpf}", "/agendamentos/{cpf}"})
     @ResponseBody
     public ResponseEntity<List<java.util.Map<String, Object>>> filaDoClienteApi(
             @PathVariable("cpf") String cpf) {
