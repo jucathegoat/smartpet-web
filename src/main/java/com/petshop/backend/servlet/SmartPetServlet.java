@@ -980,7 +980,7 @@ public class SmartPetServlet extends HttpServlet {
                         PreparedStatement ps = c.prepareStatement(
                                 "DELETE p FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE p.codigo_pet=? AND " + cpfSemMascaraSql("t.cpf") + "=?")) {
                     ps.setInt(1, id);
-                    ps.setString(2, cpf);
+                    ps.setString(2, Validacao.somenteDigitos(cpf));
                     if (ps.executeUpdate() == 0) {
                         json(resp, 404, Map.of("sucesso", false, "mensagem", "Pet não encontrado."));
                         return;
