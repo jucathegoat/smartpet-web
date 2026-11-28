@@ -35,7 +35,7 @@
                     }
 
                     .agendado {
-                        background-color: #1565c0;
+                        background-color: #ceab37;
                     }
 
                     .confirmado {
@@ -47,7 +47,7 @@
                     }
 
                     .concluido {
-                        background-color: #6a1b9a;
+                        background-color: #2e7d32;
                     }
 
                     .resumo {
@@ -67,7 +67,7 @@
                         <a href="/balconista">Balcão</a>
                         <a href="/veterinario">Veterinário</a>
                         <a href="/fila">Fila</a>
-                        <a href="/agendamentos">Agendamentos</a>
+                        <a href="admin/agendamentos">Agendamentos</a>
                         <a href="/pets">Pets</a>
                         <a href="/clientes">Clientes</a>
                         <a href="/loja">Loja</a>
@@ -123,6 +123,7 @@
                                 <th>Serviço</th>
                                 <th>Categoria</th>
                                 <th>Status</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
 
@@ -171,17 +172,47 @@
                                                     ${agenda.status}
                                                 </span>
                                             </c:when>
-
-                                            <c:otherwise>
+                                            <c:when test="${agenda.status == 'Concluido'}">
                                                 <span class="badge concluido">
-                                                    ${agenda.status}
+                                                    CONCLUÍDO
                                                 </span>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <span class="badge">${agenda.status}</span>
                                             </c:otherwise>
 
                                         </c:choose>
 
                                     </td>
+                                    <td>
 
+                                        <c:if test="${agenda.status ne 'Concluido' and agenda.status ne 'Cancelado'}">
+
+                                            <form action="/admin/agendamentos/${agenda.id}/concluir" method="POST"
+                                                style="margin:0;">
+
+                                                <button type="submit" class="btn btn-sucesso"
+                                                    onclick="return confirm('Deseja marcar este agendamento como concluído?')">
+                                                    ✓ Concluir
+                                                </button>
+
+                                            </form>
+
+                                        </c:if>
+
+                                        <c:if test="${agenda.status == 'Concluido'}">
+                                            <span style="color:#2e7d32;font-weight:600;">
+                                                
+                                            </span>
+                                        </c:if>
+
+                                        <c:if test="${agenda.status == 'Cancelado'}">
+                                            <span style="color:#999;">
+                                                
+                                            </span>
+                                        </c:if>
+
+                                    </td>
                                 </tr>
                             </c:forEach>
 

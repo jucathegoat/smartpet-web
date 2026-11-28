@@ -26,17 +26,7 @@ public class AgendamentoController {
                 this.agendaRepository = agendaRepository;
         }
 
-        @GetMapping("/agendamentos")
-        public String painelAgendamentos(HttpSession session, Model model) {
-                if (session.getAttribute("adminLogado") == null) {
-                        return "redirect:/login";
-                }
-                model.addAttribute("menuAtivo", "/agendamentos");
-                model.addAttribute("agendamentos", agendaRepository.listarTodosAgendamentosPainel());
-                return "agendamentos";
-        }
-
-        @GetMapping("/api/agendamentos/cliente/{cpf}")
+        @GetMapping("/app/agendamentos/cliente/{cpf}")
         @ResponseBody
         public ResponseEntity<List<Map<String, Object>>> listarAgendamentos(
                         @PathVariable String cpf) {
@@ -45,7 +35,7 @@ public class AgendamentoController {
                                 agendaRepository.buscarAgendamentosPorCpf(cpf));
         }
 
-        @PostMapping("/api/agendamentos")
+        @PostMapping("/app/agendamentos")
         @ResponseBody
         public ResponseEntity<Map<String, Object>> criarAgendamento(
                         @RequestBody Map<String, Object> body) {
@@ -100,13 +90,33 @@ public class AgendamentoController {
                                                 "mensagem", "Agendamento cancelado com sucesso"));
         }
 
-@GetMapping("/agendamentos")
-public String listarAgendamentos(Model model) {
+        @Controller
+        public class PaginaAgendamentoController {
 
-    model.addAttribute(
-        "agendamentos",
-        agendaRepository.listarTodosAgendamentos());
+                @Autowired
+                private AgendaRepository agendaRepository;
 
-    return "agendamentos";
-}
+                @GetMapping("/admin/agendamentos")
+                public String listarAgendamentos(Model model) {
+
+                        model.addAttribute(
+                                        "agendamentos",
+                                        agendaRepository.listarTodosAgendamentos());
+
+                        return "agendamentos";
+                }
+        }
+
+        @PostMapping("/admin/agendamentos/{id}/concluir")
+        public String concluirAgendamento(@PathVariable Integer id) {
+
+                Agenda agenda = agendaRepository.findById(id).orElse(null);
+
+                if (agenda != null) {
+                        agenda.setStatus("Concluido");
+                        agendaRepository.save(agenda);
+                }
+
+                return "redirect:/admin/agendamentos";
+        }
 }

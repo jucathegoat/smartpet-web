@@ -22,7 +22,7 @@
             <a href="/balconista">Balcão</a>
             <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila completa</a>
-            <a href="/agendamentos">Agendamentos</a>
+            <a href="/admin/agendamentos">Agendamentos</a>
             <a href="/clientes">Clientes</a>
             <a href="/logout" style="color:#ffcdd2;">Sair</a>
         </nav>

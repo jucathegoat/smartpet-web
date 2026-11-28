@@ -23,7 +23,7 @@
             <a href="/balconista">Balcão</a>
             <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila</a>
-            <a href="/agendamentos">Agendamentos</a>
+            <a href="/admin/agendamentos">Agendamentos</a>
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
             <a href="/loja">Loja</a>

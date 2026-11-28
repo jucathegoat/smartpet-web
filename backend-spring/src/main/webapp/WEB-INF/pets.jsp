@@ -31,7 +31,7 @@
             <a href="/balconista">Balcão</a>
             <a href="/veterinario">Veterinário</a>
             <a href="/fila">Fila</a>
-            <a href="/agendamentos">Agendamentos</a>
+            <a href="/admin/agendamentos">Agendamentos</a>
             <a href="/pets">Pets</a>
             <a href="/clientes">Clientes</a>
             <a href="/loja">Loja</a>
@@ -68,7 +68,7 @@
                                 <td>${p.especie}</td>
                                 <td>${p.raca}</td>
                                 <td>${p.idade} anos</td>
-                                <td>${p.nDocumento} <br><small style="color:#777;">${p.porte}</small></td>
+                                <td>${p.nDocumento}</td>
                                 <td>
                                     <form action="/admin/pets/excluir" method="POST" style="display:inline;">
                                         <input type="hidden" name="id" value="${p.id}">
