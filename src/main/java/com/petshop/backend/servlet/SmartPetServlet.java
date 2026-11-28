@@ -789,7 +789,7 @@ public class SmartPetServlet extends HttpServlet {
                         PreparedStatement ps = c.prepareStatement(
                                 "UPDATE fila_atendimento f JOIN pet p ON p.codigo_pet=f.id_petFK JOIN tutela t ON t.codigo_pet=p.codigo_pet SET f.status='Cancelado' WHERE f.id_atendimento=? AND t.cpf=? AND f.status='Em espera'")) {
                     ps.setInt(1, id);
-                    ps.setString(2, cpf);
+                    ps.setString(2, Validacao.somenteDigitos(cpf));
                     if (ps.executeUpdate() == 0) {
                         json(resp, 404,
                                 Map.of("sucesso", false, "mensagem", "Atendimento não encontrado ou já iniciado."));
@@ -978,7 +978,7 @@ public class SmartPetServlet extends HttpServlet {
                 String cpf = req.getParameter("cpf");
                 try (Connection c = MySql.connect();
                         PreparedStatement ps = c.prepareStatement(
-                                "DELETE p FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE p.codigo_pet=? AND t.cpf=?")) {
+                                "DELETE p FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE p.codigo_pet=? AND " + cpfSemMascaraSql("t.cpf") + "=?")) {
                     ps.setInt(1, id);
                     ps.setString(2, cpf);
                     if (ps.executeUpdate() == 0) {
