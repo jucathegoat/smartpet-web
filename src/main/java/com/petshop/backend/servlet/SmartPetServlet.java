@@ -27,6 +27,11 @@ import java.util.Map;
 public class SmartPetServlet extends HttpServlet {
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    /** Compara CPFs com ou sem pontuação sem alterar a chave já armazenada. */
+    private static String cpfSemMascaraSql(String coluna) {
+        return "REPLACE(REPLACE(REPLACE(TRIM(" + coluna + "), '.', ''), '-', ''), ' ', '')";
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         req.setCharacterEncoding("UTF-8");
@@ -67,22 +72,40 @@ public class SmartPetServlet extends HttpServlet {
                 json(resp, 200, List.of());
                 return;
             }
+            if ("/api/fila".equals(path)) {
+                json(resp, 200, filaCompleta());
+                return;
+            }
             if (path.startsWith("/api/fila/cliente/")) {
-                String cpf = path.substring("/api/fila/cliente/".length());
+                String cpf = Validacao.somenteDigitos(path.substring("/api/fila/cliente/".length()));
                 json(resp, 200, query(
-                        "SELECT f.id_atendimento AS id,p.nome AS nomePet,s.nome AS servico,f.status,TIMESTAMPDIFF(MINUTE,f.data_hora_entrada,CURRENT_TIMESTAMP) AS esperaMinutos FROM fila_atendimento f JOIN pet p ON p.codigo_pet=f.id_petFK JOIN servico s ON s.codigo_servico=f.id_servicoFK JOIN tutela tu ON tu.codigo_pet=p.codigo_pet WHERE tu.cpf=? ORDER BY f.data_hora_entrada DESC",
+                        "SELECT f.id_atendimento AS id,p.nome AS nomePet,s.nome AS servico,f.status,TIMESTAMPDIFF(MINUTE,f.data_hora_entrada,CURRENT_TIMESTAMP) AS esperaMinutos FROM fila_atendimento f JOIN pet p ON p.codigo_pet=f.id_petFK JOIN servico s ON s.codigo_servico=f.id_servicoFK JOIN tutela tu ON tu.codigo_pet=p.codigo_pet WHERE " + cpfSemMascaraSql("tu.cpf") + "=? ORDER BY f.data_hora_entrada DESC",
+                        cpf));
+                return;
+            }
+            if (path.startsWith("/api/agendamentos/cliente/")) {
+                String cpf = Validacao.somenteDigitos(path.substring("/api/agendamentos/cliente/".length()));
+                json(resp, 200, query(
+                        "SELECT a.id_agenda AS id,p.nome AS nomePet,s.nome AS servico,s.categoria AS categoria,DATE_FORMAT(a.data_agendamento,'%Y-%m-%d') AS data_agendamento,TIME_FORMAT(a.hora_agendamento,'%H:%i') AS hora_agendamento,a.status FROM agenda a LEFT JOIN pet p ON p.codigo_pet=a.codigo_pet LEFT JOIN servico s ON s.codigo_servico=a.codigo_servico WHERE " + cpfSemMascaraSql("a.cpf") + "=? ORDER BY a.data_agendamento DESC,a.hora_agendamento DESC",
                         cpf));
                 return;
             }
             if ("/api/avaliacoes/pendentes".equals(path)) {
+                String cpf = Validacao.somenteDigitos(req.getParameter("cpf"));
+                if (cpf.isBlank()) {
+                    json(resp, 400, Map.of("sucesso", false, "mensagem", "CPF do tutor obrigatório."));
+                    return;
+                }
                 json(resp, 200, query(
-                        "SELECT f.id_atendimento AS id,f.id_atendimento AS servico_id,s.nome AS servico,p.nome AS nomePet FROM fila_atendimento f JOIN servico s ON s.codigo_servico=f.id_servicoFK JOIN pet p ON p.codigo_pet=f.id_petFK LEFT JOIN avaliacao a ON a.id_atendimentoFK=f.id_atendimento WHERE f.status IN ('Concluído','Concluido','Finalizado') AND a.id_avaliacao IS NULL ORDER BY f.data_hora_entrada DESC"));
+                        "SELECT f.id_atendimento AS id,f.id_atendimento AS servico_id,s.nome AS servico,p.nome AS nomePet,p.codigo_pet AS pet_id FROM fila_atendimento f JOIN servico s ON s.codigo_servico=f.id_servicoFK JOIN pet p ON p.codigo_pet=f.id_petFK JOIN tutela tu ON tu.codigo_pet=p.codigo_pet LEFT JOIN avaliacao a ON a.id_atendimentoFK=f.id_atendimento WHERE f.status IN ('Concluído','Concluido','Finalizado') AND a.id_avaliacao IS NULL AND " + cpfSemMascaraSql("tu.cpf") + "=? ORDER BY f.data_hora_entrada DESC",
+                        cpf));
                 return;
             }
             if (path.startsWith("/tutor/") && path.endsWith("/pets")) {
-                String cpf = path.substring("/tutor/".length(), path.length() - "/pets".length());
+                String cpf = Validacao.somenteDigitos(
+                        path.substring("/tutor/".length(), path.length() - "/pets".length()));
                 json(resp, 200, Map.of("sucesso", true, "pets", query(
-                        "SELECT p.codigo_pet AS id, p.codigo_pet AS codigoPet, p.nome, p.especie, p.raca, p.idade, p.porte, p.peso, p.n_documento FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? ORDER BY p.nome",
+                        "SELECT p.codigo_pet AS id, p.codigo_pet AS codigoPet, p.nome, p.especie, p.raca, p.idade, p.porte, p.peso, p.n_documento FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE " + cpfSemMascaraSql("t.cpf") + "=? ORDER BY p.nome",
                         cpf)));
                 return;
             }
@@ -590,6 +613,127 @@ public class SmartPetServlet extends HttpServlet {
                     json(resp, 401, Map.of("sucesso", false, "mensagem", "Usuário ou senha incorretos."));
                 return;
             }
+            if ("/api/vendas".equals(path)) {
+                Map<String, Object> b = body(req);
+                String cpf = Validacao.somenteDigitos(value(b, "cpf"));
+                Integer produtoId = Validacao.inteiroOuNull(value(b, "id_produto"));
+                Integer quantidade = Validacao.inteiroOuNull(value(b, "quantidade"));
+                String pagamento = value(b, "forma_pagamento");
+                if (cpf.isBlank() || produtoId == null || quantidade == null || quantidade < 1) {
+                    json(resp, 400, Map.of("sucesso", false, "mensagem", "Informe tutor, produto e quantidade válida."));
+                    return;
+                }
+                if (query("SELECT cpf FROM tutor WHERE " + cpfSemMascaraSql("cpf") + "=? LIMIT 1", cpf).isEmpty()) {
+                    json(resp, 404, Map.of("sucesso", false, "mensagem", "Tutor não encontrado para este CPF."));
+                    return;
+                }
+                try (Connection c = MySql.connect()) {
+                    c.setAutoCommit(false);
+                    try {
+                        BigDecimal preco;
+                        Integer estoque;
+                        try (PreparedStatement p = c.prepareStatement(
+                                "SELECT preco,estoque FROM produto WHERE id_produto=? FOR UPDATE")) {
+                            p.setInt(1, produtoId);
+                            try (ResultSet rs = p.executeQuery()) {
+                                if (!rs.next()) {
+                                    c.rollback();
+                                    json(resp, 404, Map.of("sucesso", false, "mensagem", "Produto não encontrado."));
+                                    return;
+                                }
+                                preco = rs.getBigDecimal("preco");
+                                Object saldo = rs.getObject("estoque");
+                                estoque = saldo == null ? null : ((Number) saldo).intValue();
+                            }
+                        }
+                        if (preco == null || (estoque != null && estoque < quantidade)) {
+                            c.rollback();
+                            json(resp, 409, Map.of("sucesso", false, "mensagem", "Estoque insuficiente para este produto."));
+                            return;
+                        }
+                        BigDecimal subtotal = preco.multiply(BigDecimal.valueOf(quantidade));
+                        int vendaId;
+                        try (PreparedStatement p = c.prepareStatement(
+                                "INSERT INTO venda(forma_pagamento,subtotal,status) VALUES(?,?,?)",
+                                Statement.RETURN_GENERATED_KEYS)) {
+                            p.setString(1, pagamento.isBlank() ? "Pix" : Validacao.truncar(pagamento, 50));
+                            p.setBigDecimal(2, subtotal);
+                            p.setString(3, "Concluída");
+                            p.executeUpdate();
+                            try (ResultSet keys = p.getGeneratedKeys()) {
+                                if (!keys.next()) throw new SQLException("Venda sem identificador gerado.");
+                                vendaId = keys.getInt(1);
+                            }
+                        }
+                        try (PreparedStatement p = c.prepareStatement(
+                                "INSERT INTO item_venda(id_produtoFK,id_vendaFK,preco_unitario,subtotal,quantidade) VALUES(?,?,?,?,?)")) {
+                            p.setInt(1, produtoId);
+                            p.setInt(2, vendaId);
+                            p.setBigDecimal(3, preco);
+                            p.setBigDecimal(4, subtotal);
+                            p.setInt(5, quantidade);
+                            p.executeUpdate();
+                        }
+                        try (PreparedStatement p = c.prepareStatement(
+                                "UPDATE produto SET estoque=estoque-? WHERE id_produto=? AND estoque IS NOT NULL AND estoque>=?")) {
+                            p.setInt(1, quantidade);
+                            p.setInt(2, produtoId);
+                            p.setInt(3, quantidade);
+                            int atualizados = p.executeUpdate();
+                            if (estoque != null && atualizados == 0) {
+                                c.rollback();
+                                json(resp, 409, Map.of("sucesso", false, "mensagem", "Estoque insuficiente para este produto."));
+                                return;
+                            }
+                        }
+                        c.commit();
+                        json(resp, 201, Map.of("sucesso", true, "id_venda", vendaId, "total", subtotal,
+                                "mensagem", "Compra realizada."));
+                    } catch (SQLException | RuntimeException e) {
+                        c.rollback();
+                        throw e;
+                    }
+                }
+                return;
+            }
+            if ("/api/agendamentos".equals(path)) {
+                Map<String, Object> b = body(req);
+                String cpf = Validacao.somenteDigitos(value(b, "cpf"));
+                Integer petId = Validacao.inteiroOuNull(value(b, "idPet"));
+                Integer servicoId = Validacao.inteiroOuNull(value(b, "idServico"));
+                String data = value(b, "data"), hora = value(b, "hora");
+                if (cpf.isBlank() || petId == null || servicoId == null || data.isBlank() || hora.isBlank()) {
+                    json(resp, 400, Map.of("sucesso", false, "mensagem", "Informe tutor, pet, serviço, data e hora."));
+                    return;
+                }
+                List<Map<String, Object>> tutores = query("SELECT cpf FROM tutor WHERE " + cpfSemMascaraSql("cpf") + "=? LIMIT 1", cpf);
+                if (tutores.isEmpty()) {
+                    json(resp, 404, Map.of("sucesso", false, "mensagem", "Tutor não encontrado para este CPF."));
+                    return;
+                }
+                List<Map<String, Object>> pets = query("SELECT codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE " + cpfSemMascaraSql("t.cpf") + "=? AND p.codigo_pet=? LIMIT 1", cpf, petId);
+                if (pets.isEmpty()) {
+                    json(resp, 404, Map.of("sucesso", false, "mensagem", "Pet não encontrado para este tutor."));
+                    return;
+                }
+                String cpfTutor = String.valueOf(tutores.get(0).get("cpf"));
+                try (Connection c = MySql.connect();
+                        PreparedStatement ps = c.prepareStatement(
+                                "INSERT INTO agenda(codigo_servico,cpf,data_agendamento,hora_agendamento,codigo_pet,status) VALUES(?,?,STR_TO_DATE(?,'%Y-%m-%d'),STR_TO_DATE(?,'%H:%i'),?,'Agendado')",
+                                Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setInt(1, servicoId);
+                    ps.setString(2, cpfTutor);
+                    ps.setString(3, data);
+                    ps.setString(4, hora);
+                    ps.setInt(5, petId);
+                    ps.executeUpdate();
+                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                        keys.next();
+                        json(resp, 201, Map.of("sucesso", true, "id", keys.getInt(1), "status", "Agendado"));
+                    }
+                }
+                return;
+            }
             if ("/api/fila/adicionar".equals(path)) {
                 Map<String, Object> b = body(req);
                 String cpf = Validacao.somenteDigitos(value(b, "cpf")), nomePet = value(b, "pet"),
@@ -600,9 +744,9 @@ public class SmartPetServlet extends HttpServlet {
                 }
                 Integer idPetInformado = Validacao.inteiroOuNull(value(b, "idPet"));
                 List<Map<String, Object>> pets = idPetInformado != null
-                        ? query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? AND p.codigo_pet=? LIMIT 1",
+                        ? query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE " + cpfSemMascaraSql("t.cpf") + "=? AND p.codigo_pet=? LIMIT 1",
                                 cpf, idPetInformado)
-                        : query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE t.cpf=? AND p.nome=? LIMIT 1",
+                        : query("SELECT p.codigo_pet FROM pet p JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE " + cpfSemMascaraSql("t.cpf") + "=? AND p.nome=? LIMIT 1",
                                 cpf, nomePet);
                 List<Map<String, Object>> servicos = query("SELECT codigo_servico FROM servico WHERE nome=? LIMIT 1",
                         nomeServico);
@@ -668,10 +812,13 @@ public class SmartPetServlet extends HttpServlet {
                     json(resp, 400, Map.of("sucesso", false, "mensagem", "CPF inválido: informe os 11 dígitos."));
                     return;
                 }
-                if (query("SELECT cpf FROM tutor WHERE cpf=? LIMIT 1", cpf).isEmpty()) {
+                List<Map<String, Object>> tutores = query(
+                        "SELECT cpf FROM tutor WHERE " + cpfSemMascaraSql("cpf") + "=? LIMIT 1", cpf);
+                if (tutores.isEmpty()) {
                     json(resp, 404, Map.of("sucesso", false, "mensagem", "Tutor não encontrado para este CPF."));
                     return;
                 }
+                String cpfTutor = String.valueOf(tutores.get(0).get("cpf"));
                 String raca = value(b, "raca"), porte = value(b, "porte"), documento = value(b, "n_documento");
                 BigDecimal peso = null;
                 String pesoTexto = value(b, "peso").replace(",", ".");
@@ -708,7 +855,7 @@ public class SmartPetServlet extends HttpServlet {
                             try (PreparedStatement t = c
                                     .prepareStatement("INSERT INTO tutela(codigo_pet,cpf) VALUES(?,?)")) {
                                 t.setInt(1, k.getInt(1));
-                                t.setString(2, cpf);
+                                t.setString(2, cpfTutor);
                                 t.executeUpdate();
                             }
                         }
@@ -725,16 +872,20 @@ public class SmartPetServlet extends HttpServlet {
                     json(resp, 400, Map.of("sucesso", false, "mensagem", "A nota deve ser 1, 2 ou 3."));
                     return;
                 }
+                Object id = b.getOrDefault("id_atendimento", b.get("servico_id"));
+                String cpf = Validacao.somenteDigitos(value(b, "cpf"));
+                if (id == null || cpf.isBlank() || query(
+                        "SELECT f.id_atendimento FROM fila_atendimento f JOIN pet p ON p.codigo_pet=f.id_petFK JOIN tutela t ON t.codigo_pet=p.codigo_pet WHERE f.id_atendimento=? AND " + cpfSemMascaraSql("t.cpf") + "=? AND f.status IN ('Concluído','Concluido','Finalizado') LIMIT 1",
+                        Integer.parseInt(id.toString()), cpf).isEmpty()) {
+                    json(resp, 404, Map.of("sucesso", false, "mensagem", "Atendimento concluído não encontrado para este tutor."));
+                    return;
+                }
                 try (Connection c = MySql.connect();
                         PreparedStatement ps = c.prepareStatement(
                                 "INSERT INTO avaliacao (nota,comentario,id_atendimentoFK) VALUES (?,?,?)")) {
                     ps.setInt(1, nota);
                     ps.setString(2, Validacao.truncar(String.valueOf(b.getOrDefault("comentario", "")), 255));
-                    Object id = b.getOrDefault("id_atendimento", b.get("servico_id"));
-                    if (id == null)
-                        ps.setNull(3, java.sql.Types.INTEGER);
-                    else
-                        ps.setInt(3, Integer.parseInt(id.toString()));
+                    ps.setInt(3, Integer.parseInt(id.toString()));
                     ps.executeUpdate();
                 }
                 json(resp, 201, Map.of("sucesso", true, "mensagem", "Avaliação enviada."));
@@ -752,7 +903,25 @@ public class SmartPetServlet extends HttpServlet {
         String path = req.getPathInfo();
         if (path == null || path.isEmpty())
             path = req.getServletPath();
-        if (path != null && path.matches("/api/pets/\\d+"))
+        if (path != null && path.matches("/api/agendamentos/\\d+/cancelar")) {
+            try {
+                int id = Integer.parseInt(path.split("/")[3]);
+                String cpf = Validacao.somenteDigitos(req.getParameter("cpf"));
+                try (Connection c = MySql.connect();
+                        PreparedStatement ps = c.prepareStatement(
+                                "UPDATE agenda SET status='Cancelado' WHERE id_agenda=? AND " + cpfSemMascaraSql("cpf") + "=? AND status='Agendado'")) {
+                    ps.setInt(1, id);
+                    ps.setString(2, cpf);
+                    if (ps.executeUpdate() == 0) {
+                        json(resp, 404, Map.of("sucesso", false, "mensagem", "Agendamento não encontrado para este tutor."));
+                        return;
+                    }
+                }
+                json(resp, 200, Map.of("sucesso", true));
+            } catch (SQLException | NumberFormatException e) {
+                json(resp, 400, Map.of("sucesso", false, "mensagem", "Não foi possível cancelar o agendamento."));
+            }
+        } else if (path != null && path.matches("/api/pets/\\d+"))
             try {
                 Map<String, Object> b = body(req);
                 int id = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
@@ -926,3 +1095,4 @@ public class SmartPetServlet extends HttpServlet {
         return true;
     }
 }
+
