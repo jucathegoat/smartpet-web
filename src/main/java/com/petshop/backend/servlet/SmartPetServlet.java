@@ -367,7 +367,7 @@ public class SmartPetServlet extends HttpServlet {
                     ps.setString(1, cpf);
                     ps.setString(2, Validacao.truncar(nome, 100));
                     ps.setString(3, usuario);
-                    ps.setString(4, senha);
+                    ps.setString(4, hashSenha(senha));
                     ps.setString(5, Validacao.truncar(value(b, "telefone"), 20));
                     ps.setString(6, email);
                     ps.setString(7, Validacao.truncar(value(b, "endereco"), 150));
@@ -453,7 +453,7 @@ public class SmartPetServlet extends HttpServlet {
                     ps.setString(1, cpf.trim());
                     ps.setString(2, nome.trim());
                     ps.setString(3, usuario.trim());
-                    ps.setString(4, senha == null ? "" : senha);
+                    ps.setString(4, (senha == null || senha.isBlank()) ? "" : hashSenha(senha));
                     ps.setString(5, req.getParameter("telefone"));
                     ps.setString(6, req.getParameter("email"));
                     ps.setString(7, req.getParameter("endereco"));
@@ -596,7 +596,7 @@ public class SmartPetServlet extends HttpServlet {
                 }
                 List<Map<String, Object>> found = query(
                         "SELECT cpf,nome,usuario,senha FROM tutor WHERE usuario=? LIMIT 1", usuario);
-                if (!found.isEmpty() && String.valueOf(found.get(0).get("senha")).equals(senha)) {
+                if (!found.isEmpty() && senhaConfere(senha, String.valueOf(found.get(0).get("senha")))) {
                     Map<String, Object> u = found.get(0);
                     List<Map<String, Object>> conta = query("SELECT status_conta FROM tutor WHERE cpf=? LIMIT 1",
                             u.get("cpf"));
@@ -1075,6 +1075,20 @@ public class SmartPetServlet extends HttpServlet {
         return value == null ? "" : value.toString().trim();
     }
 
+    /** Gera o hash BCrypt da senha (o salt vai embutido no próprio hash). */
+    private static String hashSenha(String senha) {
+        return org.mindrot.jbcrypt.BCrypt.hashpw(senha, org.mindrot.jbcrypt.BCrypt.gensalt(12));
+    }
+
+    /** Confere a senha digitada com o hash armazenado no banco. */
+    private static boolean senhaConfere(String senha, String hash) {
+        try {
+            return hash != null && org.mindrot.jbcrypt.BCrypt.checkpw(senha, hash);
+        } catch (RuntimeException e) {
+            return false; // valor no banco não é um hash BCrypt válido (vazio, texto puro antigo etc.)
+        }
+    }
+
     private static String setting(String name, String fallback) {
         String value = System.getenv(name);
         return value == null || value.isBlank() ? fallback : value;
@@ -1095,4 +1109,3 @@ public class SmartPetServlet extends HttpServlet {
         return true;
     }
 }
-
