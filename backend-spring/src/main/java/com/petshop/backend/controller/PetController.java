@@ -230,7 +230,17 @@ public class PetController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> excluirPetApi(
             @PathVariable("id") Integer id,
-            @RequestParam(value = "cpf", required = false) String cpf) {
+            @RequestParam(value = "cpf") String cpf) {
+
+        String cpfLimpo = cpf == null ? "" : cpf.replaceAll("[^0-9]", "");
+        boolean pertenceAoTutor = tutelaRepository.findCpfByCodigoPet(id).stream()
+                .anyMatch(c -> c != null && c.replaceAll("[^0-9]", "").equals(cpfLimpo));
+        if (cpfLimpo.isBlank() || !pertenceAoTutor) {
+            Map<String, Object> erro = new HashMap<>();
+            erro.put("sucesso", false);
+            erro.put("mensagem", "Pet não encontrado para este tutor.");
+            return ResponseEntity.status(404).body(erro);
+        }
 
         if (!petRepository.existsById(id)) {
             Map<String, Object> erro = new HashMap<>();
